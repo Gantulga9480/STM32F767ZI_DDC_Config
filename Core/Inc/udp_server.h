@@ -24,7 +24,7 @@ struct IP4_Container {
 
 void USR_UDP_Init(struct IP4_Container ip4, uint16_t sendPort, uint16_t receivePort);
 
-USR_StatusTypeDef USR_UDP_Send(uint16_t udp_send_port, uint8_t *buff, uint16_t len);
+USR_StatusTypeDef USR_UDP_Send(uint16_t udp_send_port, struct pbuf *buff, uint16_t len);
 
 void USR_UDP_ReceiveCallback(struct pbuf *p, const uint32_t addr, const uint16_t port);
 
