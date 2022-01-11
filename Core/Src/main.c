@@ -34,8 +34,8 @@
 
 /* Private define ------------------------------------------------------------*/
 /* USER CODE BEGIN PD */
-#define UDP_SEND_PORT 7
-#define UDP_RECEIVE_PORT 8
+#define UDP_SEND_PORT 10
+#define UDP_RECEIVE_PORT 11
 
 #define BUFFER_COUNT 8
 #define BUFFER_SIZE 500 // 1000 byte
