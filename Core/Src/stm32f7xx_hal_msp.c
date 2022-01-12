@@ -23,7 +23,7 @@
 /* USER CODE BEGIN Includes */
 
 /* USER CODE END Includes */
-extern DMA_HandleTypeDef hdma_tim1_ch3;
+extern DMA_HandleTypeDef hdma_tim1_ch4_trig_com;
 
 /* Private typedef -----------------------------------------------------------*/
 /* USER CODE BEGIN TD */
@@ -109,23 +109,27 @@ void HAL_TIM_IC_MspInit(TIM_HandleTypeDef* htim_ic)
     HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
 
     /* TIM1 DMA Init */
-    /* TIM1_CH3 Init */
-    hdma_tim1_ch3.Instance = DMA2_Stream6;
-    hdma_tim1_ch3.Init.Channel = DMA_CHANNEL_6;
-    hdma_tim1_ch3.Init.Direction = DMA_PERIPH_TO_MEMORY;
-    hdma_tim1_ch3.Init.PeriphInc = DMA_PINC_DISABLE;
-    hdma_tim1_ch3.Init.MemInc = DMA_MINC_ENABLE;
-    hdma_tim1_ch3.Init.PeriphDataAlignment = DMA_PDATAALIGN_HALFWORD;
-    hdma_tim1_ch3.Init.MemDataAlignment = DMA_MDATAALIGN_HALFWORD;
-    hdma_tim1_ch3.Init.Mode = DMA_NORMAL;
-    hdma_tim1_ch3.Init.Priority = DMA_PRIORITY_LOW;
-    hdma_tim1_ch3.Init.FIFOMode = DMA_FIFOMODE_DISABLE;
-    if (HAL_DMA_Init(&hdma_tim1_ch3) != HAL_OK)
+    /* TIM1_CH4_TRIG_COM Init */
+    hdma_tim1_ch4_trig_com.Instance = DMA2_Stream4;
+    hdma_tim1_ch4_trig_com.Init.Channel = DMA_CHANNEL_6;
+    hdma_tim1_ch4_trig_com.Init.Direction = DMA_PERIPH_TO_MEMORY;
+    hdma_tim1_ch4_trig_com.Init.PeriphInc = DMA_PINC_DISABLE;
+    hdma_tim1_ch4_trig_com.Init.MemInc = DMA_MINC_ENABLE;
+    hdma_tim1_ch4_trig_com.Init.PeriphDataAlignment = DMA_PDATAALIGN_HALFWORD;
+    hdma_tim1_ch4_trig_com.Init.MemDataAlignment = DMA_MDATAALIGN_HALFWORD;
+    hdma_tim1_ch4_trig_com.Init.Mode = DMA_NORMAL;
+    hdma_tim1_ch4_trig_com.Init.Priority = DMA_PRIORITY_LOW;
+    hdma_tim1_ch4_trig_com.Init.FIFOMode = DMA_FIFOMODE_DISABLE;
+    if (HAL_DMA_Init(&hdma_tim1_ch4_trig_com) != HAL_OK)
     {
       Error_Handler();
     }
 
-    __HAL_LINKDMA(htim_ic,hdma[TIM_DMA_ID_CC3],hdma_tim1_ch3);
+    /* Several peripheral DMA handle pointers point to the same DMA handle.
+     Be aware that there is only one stream to perform all the requested DMAs. */
+    __HAL_LINKDMA(htim_ic,hdma[TIM_DMA_ID_CC4],hdma_tim1_ch4_trig_com);
+    __HAL_LINKDMA(htim_ic,hdma[TIM_DMA_ID_TRIGGER],hdma_tim1_ch4_trig_com);
+    __HAL_LINKDMA(htim_ic,hdma[TIM_DMA_ID_COMMUTATION],hdma_tim1_ch4_trig_com);
 
   /* USER CODE BEGIN TIM1_MspInit 1 */
 
@@ -217,7 +221,9 @@ void HAL_TIM_IC_MspDeInit(TIM_HandleTypeDef* htim_ic)
     HAL_GPIO_DeInit(GPIOA, GPIO_PIN_10|GPIO_PIN_11);
 
     /* TIM1 DMA DeInit */
-    HAL_DMA_DeInit(htim_ic->hdma[TIM_DMA_ID_CC3]);
+    HAL_DMA_DeInit(htim_ic->hdma[TIM_DMA_ID_CC4]);
+    HAL_DMA_DeInit(htim_ic->hdma[TIM_DMA_ID_TRIGGER]);
+    HAL_DMA_DeInit(htim_ic->hdma[TIM_DMA_ID_COMMUTATION]);
   /* USER CODE BEGIN TIM1_MspDeInit 1 */
 
   /* USER CODE END TIM1_MspDeInit 1 */

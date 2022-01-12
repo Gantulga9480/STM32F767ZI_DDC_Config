@@ -47,7 +47,6 @@ void USR_UDP_Init(struct IP4_Container ip4, uint16_t sendPort, uint16_t receiveP
 		{
 			udp_remove(send_upcb);
 		}
-		udp_connect(&my_upcb, &my_addr, sendPort);
 	}
 
 	/* Create a new UDP receive control block  */
@@ -72,17 +71,31 @@ void USR_UDP_Init(struct IP4_Container ip4, uint16_t sendPort, uint16_t receiveP
 			udp_remove(recv_upcb);
 		}
 	}
+	udp_connect(&my_upcb, &my_addr, sendPort);  // 10Mbps
+	// udp_connect(&my_upcb, &my_addr, sendPort);  // 20Mbps
 }
 
-USR_StatusTypeDef USR_UDP_Send(uint16_t udp_send_port, struct pbuf *buff, uint16_t len)
+USR_StatusTypeDef USR_UDP_Send(uint16_t udp_send_port, uint8_t *buff, uint16_t len)
 {
-	udp_connect(&my_upcb, &my_addr, udp_send_port);
+	struct pbuf *p_tx;
 
-	udp_send(&my_upcb, buff);
+	p_tx = pbuf_alloc(PBUF_TRANSPORT, len, PBUF_RAM);
 
-	udp_disconnect(&my_upcb);
+	if(p_tx != NULL)
+	{
+		pbuf_take(p_tx, buff, len);
 
-	return USR_OK;
+		udp_connect(&my_upcb, &my_addr, udp_send_port);
+
+		udp_send(&my_upcb, p_tx);
+
+		udp_disconnect(&my_upcb);
+
+		pbuf_free(p_tx);
+
+		return USR_OK;
+	}
+	return USR_ERR;
 }
 
 /**

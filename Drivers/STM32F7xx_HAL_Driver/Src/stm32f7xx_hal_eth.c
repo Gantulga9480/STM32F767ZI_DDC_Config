@@ -890,7 +890,8 @@ HAL_StatusTypeDef HAL_ETH_UnRegisterCallback(ETH_HandleTypeDef *heth, HAL_ETH_Ca
 HAL_StatusTypeDef HAL_ETH_TransmitFrame(ETH_HandleTypeDef *heth, uint32_t FrameLength)
 {
   uint32_t bufcount = 0, size = 0, i = 0;
-  
+  /* Process Unlocked USR_ADDED */
+  __HAL_UNLOCK(heth);
   /* Process Locked */
   __HAL_LOCK(heth);
   
@@ -982,6 +983,10 @@ HAL_StatusTypeDef HAL_ETH_TransmitFrame(ETH_HandleTypeDef *heth, uint32_t FrameL
     (heth->Instance)->DMASR = ETH_DMASR_TBUS;
     /* Resume DMA transmission*/
     (heth->Instance)->DMATPDR = 0;
+  }
+  else
+  {
+	  __NOP();
   }
   
   /* Set ETH HAL State to Ready */
