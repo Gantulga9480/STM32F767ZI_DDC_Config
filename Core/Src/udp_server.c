@@ -47,7 +47,6 @@ void USR_UDP_Init(struct IP4_Container ip4, uint16_t sendPort, uint16_t receiveP
 		{
 			udp_remove(send_upcb);
 		}
-		udp_connect(&my_upcb, &my_addr, sendPort);
 	}
 
 	/* Create a new UDP receive control block  */
@@ -72,6 +71,8 @@ void USR_UDP_Init(struct IP4_Container ip4, uint16_t sendPort, uint16_t receiveP
 			udp_remove(recv_upcb);
 		}
 	}
+	udp_connect(&my_upcb, &my_addr, sendPort);  // 10Mbps
+	// udp_connect(&my_upcb, &my_addr, sendPort);  // 20Mbps
 }
 
 USR_StatusTypeDef USR_UDP_Send(uint16_t udp_send_port, uint8_t *buff, uint16_t len)
