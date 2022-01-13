@@ -57,7 +57,7 @@
 TIM_HandleTypeDef htim1;
 TIM_HandleTypeDef htim2;
 TIM_HandleTypeDef htim8;
-DMA_HandleTypeDef hdma_tim1_ch3;
+DMA_HandleTypeDef hdma_tim1_ch4_trig_com;
 
 /* USER CODE BEGIN PV */
 
@@ -68,36 +68,8 @@ uint8_t prev_index = 0;
 
 int16_t DDC_Buffer1[HEADER_SIZE + BUFFER_SIZE + FOOTER_SIZE];
 int16_t DDC_Buffer2[HEADER_SIZE + BUFFER_SIZE + FOOTER_SIZE];
-int16_t DDC_Buffer3[HEADER_SIZE + BUFFER_SIZE + FOOTER_SIZE];
-int16_t DDC_Buffer4[HEADER_SIZE + BUFFER_SIZE + FOOTER_SIZE];
-int16_t DDC_Buffer5[HEADER_SIZE + BUFFER_SIZE + FOOTER_SIZE];
-int16_t DDC_Buffer6[HEADER_SIZE + BUFFER_SIZE + FOOTER_SIZE];
-int16_t DDC_Buffer7[HEADER_SIZE + BUFFER_SIZE + FOOTER_SIZE];
-int16_t DDC_Buffer8[HEADER_SIZE + BUFFER_SIZE + FOOTER_SIZE];
 
-int16_t *buffers[] = {DDC_Buffer1, DDC_Buffer2, DDC_Buffer3, DDC_Buffer4, DDC_Buffer5, DDC_Buffer6, DDC_Buffer7, DDC_Buffer8};
-
-struct pbuf *p_tx1;
-struct pbuf *p_tx2;
-//struct pbuf *p_tx3;
-//struct pbuf *p_tx4;
-//struct pbuf *p_tx5;
-//struct pbuf *p_tx6;
-//struct pbuf *p_tx7;
-//struct pbuf *p_tx8;
-
-void *ps[2];
-
-struct pbuf **p_txs[2];
-
-int16_t coef3[128] = {
-1, 1, 1, 1, 1, 1, 1, 1, 2, 2, 2, 2, 2, 2, 3, 3, 3, 3, 3, 4, 4, 4, 5, 5, 5, 5, 6, 6, 6, 7, 7, 7, 8, 8, 9, 9, 9, 10, 10, 10, 11, 11, 11, 12, 12, 12, 12, 13, 13, 13, 13, 14, 14, 14, 14, 14, 14, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 14, 14, 14, 14, 14, 14, 13, 13, 13, 13, 12, 12, 12, 12, 11, 11, 11, 10, 10, 10, 9, 9, 9, 8, 8, 7, 7, 7, 6, 6, 6, 5, 5, 5, 5, 4, 4, 4, 3, 3, 3, 3, 3, 2, 2, 2, 2, 2, 2, 1, 1, 1, 1, 1, 1, 1, 1,
-}; // 1000
-
-int16_t coef2[128] = {
-0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, -1, -1, -1, 0, 1, 1, 1, 1, 0, -1, -1, -2, -1, 0, 1, 2, 2, 1, -1, -3, -4, -4, -2, 2, 7, 13, 17, 20, 20, 17, 13, 7, 2, -2, -4, -4, -3, -1, 1, 2, 2, 1, 0, -1, -2, -1, -1, 0, 1, 1, 1, 1, 0, -1, -1, -1, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
-}; // 100
-
+int16_t *buffers[] = {DDC_Buffer1, DDC_Buffer2};
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -156,58 +128,7 @@ int main(void)
 
     /* ---------------------------------------------------- SETUP START */
 
-  	p_txs[0] = &p_tx1;
-    p_txs[1] = &p_tx2;
-    /*p_txs[2] = &p_tx3;
-    p_txs[3] = &p_tx4;
-    p_txs[4] = &p_tx5;
-    p_txs[5] = &p_tx6;
-    p_txs[6] = &p_tx7;
-    p_txs[7] = &p_tx8;*/
-
-    p_tx1 = pbuf_alloc(PBUF_TRANSPORT, PACKET_SIZE, PBUF_RAM);
-    if (p_tx1 == NULL) for (;;);
-    p_tx2 = pbuf_alloc(PBUF_TRANSPORT, PACKET_SIZE, PBUF_RAM);
-    if (p_tx2 == NULL) for (;;);
-    /*p_tx3 = pbuf_alloc(PBUF_TRANSPORT, PACKET_SIZE, PBUF_RAM);
-    if (p_tx3 == NULL) for (;;);
-    p_tx4 = pbuf_alloc(PBUF_TRANSPORT, PACKET_SIZE, PBUF_RAM);
-    if (p_tx4 == NULL) for (;;);
-    p_tx5 = pbuf_alloc(PBUF_TRANSPORT, PACKET_SIZE, PBUF_RAM);
-    if (p_tx5 == NULL) for (;;);
-    p_tx6 = pbuf_alloc(PBUF_TRANSPORT, PACKET_SIZE, PBUF_RAM);
-    if (p_tx6 == NULL) for (;;);
-    p_tx7 = pbuf_alloc(PBUF_TRANSPORT, PACKET_SIZE, PBUF_RAM);
-    if (p_tx7 == NULL) for (;;);
-    p_tx8 = pbuf_alloc(PBUF_TRANSPORT, PACKET_SIZE, PBUF_RAM);
-    if (p_tx8 == NULL) for (;;);*/
-
-    void *sram2 = (void *)0x2007C064;
-    void *sram1 = (void *)0x2007B82F;
-
-    //p_tx1->payload = sram2;
-    //p_tx2->payload = sram1;
-
-    ps[0] = p_tx1->payload;
-	ps[1] = p_tx2->payload;
-	//ps[2] = p_tx3->payload;
-	//ps[3] = p_tx4->payload;
-	//ps[4] = p_tx5->payload;
-	//ps[5] = p_tx6->payload;
-	//ps[6] = p_tx7->payload;
-	//ps[7] = p_tx8->payload;
-
-    init_buffer();
-
-    pbuf_take(p_tx1, buffers[0], PACKET_SIZE);
-    pbuf_take(p_tx2, buffers[1], PACKET_SIZE);
-    //pbuf_take(p_tx3, buffers[2], PACKET_SIZE);
-    //pbuf_take(p_tx4, buffers[3], PACKET_SIZE);
-    //pbuf_take(p_tx5, buffers[4], PACKET_SIZE);
-    //pbuf_take(p_tx6, buffers[5], PACKET_SIZE);
-    //pbuf_take(p_tx7, buffers[6], PACKET_SIZE);
-    //pbuf_take(p_tx8, buffers[7], PACKET_SIZE);
-
+  	init_buffer();
 	/* ---------------------------------------------------- ETH START */
 	USR_UDP_Init(udp_ip, UDP_SEND_PORT, UDP_RECEIVE_PORT);
 	/* ---------------------------------------------------- ETH END   */
@@ -227,9 +148,8 @@ int main(void)
 	DDC_Config_Init();
 
 	/* DMA start IC */
-	/* stm32f7xx_hal_tim.c 2405 */
-	//HAL_TIM_Base_Start(&htim2);
-	if (HAL_TIM_IC_Start_DMA(&htim1, TIM_CHANNEL_3, (uint32_t *)((uint16_t *)ps[dbuf_index] + HEADER_SIZE), BUFFER_SIZE) != HAL_OK) for(;;);
+	HAL_Delay(1000);
+	if (HAL_TIM_IC_Start_DMA(&htim1, TIM_CHANNEL_4, (uint32_t *)(buffers[dbuf_index] + HEADER_SIZE), 500) != HAL_OK) for(;;);
 	else dbuf_index++;
 	/* ---------------------------------------------------- DDC END */
 
@@ -243,10 +163,6 @@ int main(void)
   while (1)
   {
 	MX_LWIP_Process();
-	//USR_UDP_Send(UDP_SEND_PORT, *p_txs[dbuf_index], PACKET_SIZE);
-	//dbuf_index++;
-	//if (dbuf_index == BUFFER_COUNT) dbuf_index = 0;
-    // HAL_Delay(0.01);
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
@@ -339,6 +255,11 @@ static void MX_TIM1_Init(void)
   sConfigIC.ICPrescaler = TIM_ICPSC_DIV1;
   sConfigIC.ICFilter = 0;
   if (HAL_TIM_IC_ConfigChannel(&htim1, &sConfigIC, TIM_CHANNEL_3) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  sConfigIC.ICPolarity = TIM_INPUTCHANNELPOLARITY_BOTHEDGE;
+  if (HAL_TIM_IC_ConfigChannel(&htim1, &sConfigIC, TIM_CHANNEL_4) != HAL_OK)
   {
     Error_Handler();
   }
@@ -487,9 +408,9 @@ static void MX_DMA_Init(void)
   __HAL_RCC_DMA2_CLK_ENABLE();
 
   /* DMA interrupt init */
-  /* DMA2_Stream6_IRQn interrupt configuration */
-  HAL_NVIC_SetPriority(DMA2_Stream6_IRQn, 0, 0);
-  HAL_NVIC_EnableIRQ(DMA2_Stream6_IRQn);
+  /* DMA2_Stream4_IRQn interrupt configuration */
+  HAL_NVIC_SetPriority(DMA2_Stream4_IRQn, 0, 0);
+  HAL_NVIC_EnableIRQ(DMA2_Stream4_IRQn);
 
 }
 
@@ -655,7 +576,7 @@ void USR_UDP_ReceiveCallback(struct pbuf *p, const uint32_t addr, const uint16_t
 	ip = toIP4(addr);
 	if (ip.IP4 == 28U)
 	{
-		USR_UDP_InsertPostData("HELLO!", 6);
+		USR_UDP_InsertPostData("DONE!", 5);
 		uint8_t *pptr = (uint8_t *)p->payload;
 		if (pptr[0] == 'L')
 			HAL_GPIO_TogglePin(GPIOB, LED_Pin);
@@ -709,16 +630,8 @@ void HAL_TIM_IC_CaptureCallback(TIM_HandleTypeDef *htim)
 	if (htim->Instance == htim1.Instance)
 	{
 		/* Send DDC data to PC vie Ethernet */
-
-		//uint32_t start = __HAL_TIM_GetCounter(&htim2);
-
-		//uint16_t stop = __HAL_TIM_GetCounter(&htim2) - start;
-		USR_UDP_Send(UDP_SEND_PORT, *p_txs[prev_index], PACKET_SIZE);
-
-		//sprintf((char *)((uint16_t *)ps[dbuf_index]+2), "%u", stop);
-		if (HAL_TIM_IC_Start_DMA(&htim1, TIM_CHANNEL_3, (uint32_t *)((uint16_t *)ps[dbuf_index] + HEADER_SIZE), BUFFER_SIZE) != HAL_OK) for(;;);
-		else __NOP();
-
+		if (HAL_TIM_IC_Start_DMA(&htim1, TIM_CHANNEL_4, (uint32_t *)(buffers[dbuf_index] + HEADER_SIZE), 500) != HAL_OK) for(;;);
+		USR_UDP_Send(UDP_SEND_PORT, (uint8_t *)buffers[prev_index], PACKET_SIZE);
 		prev_index = dbuf_index;
 		dbuf_index++;
 		if (dbuf_index == BUFFER_COUNT) dbuf_index = 0;
