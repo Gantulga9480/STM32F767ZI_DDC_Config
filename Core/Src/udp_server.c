@@ -192,7 +192,7 @@ USR_StatusTypeDef USR_UDP_InsertPostData(char *data, uint16_t len)
 {
 	if ((len >= POST_DATA_BUFFER_SIZE) || ((post_data_size + len) >= POST_DATA_BUFFER_SIZE))
 		return USR_ERR;
-	strcpy(post_data_buffer, data);
+	strcpy(post_data_buffer + post_data_size, data);
 	post_data_size += len;
 	return USR_OK;
 }

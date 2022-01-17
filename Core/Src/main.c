@@ -157,7 +157,7 @@ int main(void)
 	DDC_Config_Init();
 
 	/* DMA start IC */
-	HAL_Delay(1000);
+	HAL_Delay(3000);
 	if (HAL_TIM_IC_Start_DMA(&htim1, TIM_CHANNEL_4, (uint32_t *)(buffers[dbuf_index] + HEADER_SIZE), 500) != HAL_OK) for(;;);
 	else dbuf_index++;
 	/* ---------------------------------------------------- DDC END */
