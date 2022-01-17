@@ -24,7 +24,6 @@
 /* USER CODE BEGIN Includes */
 #include "udp_server.h"
 #include "ddc.h"
-#include "math.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -56,6 +55,7 @@
 
 TIM_HandleTypeDef htim1;
 TIM_HandleTypeDef htim2;
+TIM_HandleTypeDef htim3;
 TIM_HandleTypeDef htim8;
 DMA_HandleTypeDef hdma_tim1_ch4_trig_com;
 
@@ -63,6 +63,9 @@ DMA_HandleTypeDef hdma_tim1_ch4_trig_com;
 
 struct IP4_Container udp_ip = {10, 3, 4, 28}; // 10.3.4.28:UDP_SEND_PORT
 
+uint16_t code[6] = {1, 0, 1, 0, 1, 0};
+
+uint8_t code_index = 0;
 uint8_t dbuf_index = 0;
 uint8_t prev_index = 0;
 
@@ -79,6 +82,7 @@ static void MX_TIM1_Init(void);
 static void MX_TIM8_Init(void);
 static void MX_DMA_Init(void);
 static void MX_TIM2_Init(void);
+static void MX_TIM3_Init(void);
 /* USER CODE BEGIN PFP */
 void init_buffer();
 uint16_t get_addr(uint8_t *s, int16_t start);
@@ -121,17 +125,22 @@ int main(void)
   MX_GPIO_Init();
   MX_DMA_Init();
   MX_TIM1_Init();
-  MX_TIM2_Init();
   MX_TIM8_Init();
+  MX_TIM2_Init();
+  MX_TIM3_Init();
   MX_LWIP_Init();
   /* USER CODE BEGIN 2 */
 
     /* ---------------------------------------------------- SETUP START */
 
   	init_buffer();
-	/* ---------------------------------------------------- ETH START */
+	/* ---------------------------------------------------- UDP START */
 	USR_UDP_Init(udp_ip, UDP_SEND_PORT, UDP_RECEIVE_PORT);
-	/* ---------------------------------------------------- ETH END   */
+	/* ---------------------------------------------------- UDP END   */
+
+	/* ---------------------------------------------------- CODER START */
+	HAL_TIM_Base_Start_IT(&htim3);
+	/* ---------------------------------------------------- CODER END   */
 
 	/* ---------------------------------------------------- DDC START */
 	HAL_GPIO_WritePin(GPIOA, OSC_EN_Pin, GPIO_PIN_RESET);
@@ -290,7 +299,7 @@ static void MX_TIM2_Init(void)
   htim2.Instance = TIM2;
   htim2.Init.Prescaler = 0;
   htim2.Init.CounterMode = TIM_COUNTERMODE_UP;
-  htim2.Init.Period = 65535 - 1;
+  htim2.Init.Period = 1;
   htim2.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
   htim2.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
   if (HAL_TIM_Base_Init(&htim2) != HAL_OK)
@@ -311,6 +320,51 @@ static void MX_TIM2_Init(void)
   /* USER CODE BEGIN TIM2_Init 2 */
 
   /* USER CODE END TIM2_Init 2 */
+
+}
+
+/**
+  * @brief TIM3 Initialization Function
+  * @param None
+  * @retval None
+  */
+static void MX_TIM3_Init(void)
+{
+
+  /* USER CODE BEGIN TIM3_Init 0 */
+
+  /* USER CODE END TIM3_Init 0 */
+
+  TIM_ClockConfigTypeDef sClockSourceConfig = {0};
+  TIM_MasterConfigTypeDef sMasterConfig = {0};
+
+  /* USER CODE BEGIN TIM3_Init 1 */
+
+  /* USER CODE END TIM3_Init 1 */
+  htim3.Instance = TIM3;
+  htim3.Init.Prescaler = 9000-1;
+  htim3.Init.CounterMode = TIM_COUNTERMODE_UP;
+  htim3.Init.Period = 1100-1;
+  htim3.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
+  htim3.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
+  if (HAL_TIM_Base_Init(&htim3) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  sClockSourceConfig.ClockSource = TIM_CLOCKSOURCE_INTERNAL;
+  if (HAL_TIM_ConfigClockSource(&htim3, &sClockSourceConfig) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  sMasterConfig.MasterOutputTrigger = TIM_TRGO_RESET;
+  sMasterConfig.MasterSlaveMode = TIM_MASTERSLAVEMODE_DISABLE;
+  if (HAL_TIMEx_MasterConfigSynchronization(&htim3, &sMasterConfig) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  /* USER CODE BEGIN TIM3_Init 2 */
+
+  /* USER CODE END TIM3_Init 2 */
 
 }
 
@@ -559,9 +613,9 @@ void DDC_Config_Init()
 	ddc_main_conf.NCO_Frequency 	= 0x0000DA740E;
 	ddc_main_conf.NCO_PhaseOffset 	= 0;
 	ddc_main_conf.CIC2_Scale 		= 6;
-	ddc_main_conf.CIC2_Decimation 	= 9;
+	ddc_main_conf.CIC2_Decimation 	= 4;
 	ddc_main_conf.CIC5_Scale 		= 6;
-	ddc_main_conf.CIC5_Decimation 	= 9;
+	ddc_main_conf.CIC5_Decimation 	= 5;
 	ddc_main_conf.RCF_Scale 		= 4;
 	ddc_main_conf.RCF_Decimation 	= 0;
 	ddc_main_conf.RCF_AddressOffset = 0;
@@ -574,54 +628,18 @@ void USR_UDP_ReceiveCallback(struct pbuf *p, const uint32_t addr, const uint16_t
 {
 	struct IP4_Container ip;
 	ip = toIP4(addr);
-	if (ip.IP4 == 28U)
+	if (ip.IP4 == udp_ip.IP4)
 	{
-		USR_UDP_InsertPostData("DONE!", 5);
 		uint8_t *pptr = (uint8_t *)p->payload;
 		if (pptr[0] == 'L')
 			HAL_GPIO_TogglePin(GPIOB, LED_Pin);
 		if (pptr[0] == 'A')
-		{
-			uint16_t addr = 0, i = 0;
-			uint64_t value = 0;
-			DDC_ConfigTypeDef ddc_conf;
-			int16_t addr_start = 1;
-			int16_t val_start = 4;
-			for (; i < 13; i++)
-			{
-				addr = get_addr(pptr, addr_start);
-				value = get_value(pptr, val_start);
-				if (addr == DDC_MODE)
-					ddc_conf.DDC_Mode = value;
-				else if (addr == DDC_NCO_MODE)
-					ddc_conf.NCO_Mode = value;
-				else if (addr == DDC_NCO_SYNC_MASK)
-					ddc_conf.NCO_SyncMask = value;
-				else if (addr == DDC_NCO_FREQUENCY)
-					ddc_conf.NCO_Frequency = value;
-				else if (addr == DDC_NCO_PHASE_OFFSET)
-					ddc_conf.NCO_PhaseOffset = value;
-				else if (addr == DDC_CIC2_SCALE)
-					ddc_conf.CIC2_Scale = value;
-				else if (addr == DDC_CIC2_DECIMATION)
-					ddc_conf.CIC2_Decimation = value;
-				else if (addr == DDC_CIC5_SCALE)
-					ddc_conf.CIC5_Scale = value;
-				else if (addr == DDC_CIC5_DECIMATION)
-					ddc_conf.CIC5_Decimation = value;
-				else if (addr == DDC_RCF_SCALE)
-					ddc_conf.RCF_Scale = value;
-				else if (addr == DDC_RCF_DECIMATION)
-					ddc_conf.RCF_Decimation = value;
-				else if (addr == DDC_RCF_ADDRESS_OFFSET)
-					ddc_conf.RCF_AddressOffset = value;
-				else if (addr == DDC_RCF_FILTER_TAPS)
-					ddc_conf.RCF_FilterTaps = value;
-				addr_start += 16;
-				val_start += 16;
-			}
-			USR_DDC_Init(ddc_conf);
-		}
+			USR_DDC_UdpHandler(pptr);
+		if (pptr[0] == 'R')
+			/* TODO */
+			/* Send DDC configuration to PC using UDP */
+			/* Make DDC configuration struct public */
+			__NOP();
 	}
 }
 
@@ -629,12 +647,19 @@ void HAL_TIM_IC_CaptureCallback(TIM_HandleTypeDef *htim)
 {
 	if (htim->Instance == htim1.Instance)
 	{
-		/* Send DDC data to PC vie Ethernet */
+		/* Send DDC data to PC through Ethernet */
 		if (HAL_TIM_IC_Start_DMA(&htim1, TIM_CHANNEL_4, (uint32_t *)(buffers[dbuf_index] + HEADER_SIZE), 500) != HAL_OK) for(;;);
-		USR_UDP_Send(UDP_SEND_PORT, (uint8_t *)buffers[prev_index], PACKET_SIZE);
-		prev_index = dbuf_index;
-		dbuf_index++;
-		if (dbuf_index == BUFFER_COUNT) dbuf_index = 0;
+		USR_UDP_Send(UDP_SEND_PORT, (uint8_t *)buffers[prev_index], PACKET_SIZE); prev_index = dbuf_index;
+		dbuf_index++; if (dbuf_index == BUFFER_COUNT) dbuf_index = 0;
+	}
+}
+
+void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
+{
+	if (htim->Instance == htim3.Instance)
+	{
+		code_index = 0;
+		HAL_TIM_Base_Start_IT(&htim2);
 	}
 }
 
@@ -650,24 +675,6 @@ void init_buffer()
 		// FOOTER
 		for (j = 0; j < FOOTER_SIZE; j++) { buffers[i][HEADER_SIZE + BUFFER_SIZE + j] = FOOTER; }
 	}
-}
-
-uint16_t get_addr(uint8_t *s, int16_t start)
-{
-	// uint16_t address = 0;
-	// address = address +
-	return (s[start] - '0') * 10 + (s[start+1] - '0') + 0x300;
-}
-
-uint64_t get_value(uint8_t *s, int16_t start)
-{
-	uint64_t b = 0;
-	uint8_t i = 0;
-	for (; i < 12; i++)
-    {
-	   b = b + (s[start+i] - '0') * pow(10, 11-i);
-    }
-	return b;
 }
 
 /* USER CODE END 4 */

@@ -69,20 +69,21 @@ typedef struct
 } DDC_ConfigTypeDef;
 
 void USR_DDC_Init(DDC_ConfigTypeDef conf);
-
-void hardReset();
-
-void flush_iq_ram();
-void flush_rcf_ram();
-void write_rcf_ram();
 void USR_DDC_FIR_Set(int16_t *filter);
+void USR_DDC_UdpHandler(uint8_t *udp_data);
 
 uint64_t write_ddc(uint16_t address, uint64_t data);
 uint64_t read_ddc(uint16_t address);
 
+void hardReset();
 void data_port_mode(uint32_t port_mode);
 void ddc_rdy_int_mode(uint32_t mode);
+void write_rcf_ram();
 uint16_t uPort_read(uint8_t address);
 uint8_t uPort_write(uint8_t address, uint8_t data);
+uint16_t get_addr(uint8_t *s, int16_t start);
+uint64_t get_value(uint8_t *s, int16_t start);
+void flush_rcf_ram(); // deprecated;
+void flush_iq_ram();  // deprecated
 
 #endif /* INC_DDC_H_ */

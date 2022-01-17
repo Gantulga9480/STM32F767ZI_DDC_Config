@@ -984,10 +984,6 @@ HAL_StatusTypeDef HAL_ETH_TransmitFrame(ETH_HandleTypeDef *heth, uint32_t FrameL
     /* Resume DMA transmission*/
     (heth->Instance)->DMATPDR = 0;
   }
-  else
-  {
-	  __NOP();
-  }
   
   /* Set ETH HAL State to Ready */
   heth->State = HAL_ETH_STATE_READY;

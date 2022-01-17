@@ -8,6 +8,7 @@
 #include "main.h"
 #include "ddc.h"
 #include "string.h"
+#include "math.h"
 
 uint8_t DDC_READY_FLAG;
 
@@ -207,4 +208,65 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
 void USR_DDC_FIR_Set(int16_t *filter)
 {
 	DDC_FIR_COEF = filter;
+}
+
+void USR_DDC_UdpHandler(uint8_t *udp_data)
+{
+	uint16_t addr = 0, i = 0;
+	uint64_t value = 0;
+	DDC_ConfigTypeDef ddc_conf;
+	int16_t addr_start = 1;
+	int16_t val_start = 4;
+	for (; i < 13; i++)
+	{
+		addr = get_addr(udp_data, addr_start);
+		value = get_value(udp_data, val_start);
+		if (addr == DDC_MODE)
+			ddc_conf.DDC_Mode = value;
+		else if (addr == DDC_NCO_MODE)
+			ddc_conf.NCO_Mode = value;
+		else if (addr == DDC_NCO_SYNC_MASK)
+			ddc_conf.NCO_SyncMask = value;
+		else if (addr == DDC_NCO_FREQUENCY)
+			ddc_conf.NCO_Frequency = value;
+		else if (addr == DDC_NCO_PHASE_OFFSET)
+			ddc_conf.NCO_PhaseOffset = value;
+		else if (addr == DDC_CIC2_SCALE)
+			ddc_conf.CIC2_Scale = value;
+		else if (addr == DDC_CIC2_DECIMATION)
+			ddc_conf.CIC2_Decimation = value;
+		else if (addr == DDC_CIC5_SCALE)
+			ddc_conf.CIC5_Scale = value;
+		else if (addr == DDC_CIC5_DECIMATION)
+			ddc_conf.CIC5_Decimation = value;
+		else if (addr == DDC_RCF_SCALE)
+			ddc_conf.RCF_Scale = value;
+		else if (addr == DDC_RCF_DECIMATION)
+			ddc_conf.RCF_Decimation = value;
+		else if (addr == DDC_RCF_ADDRESS_OFFSET)
+			ddc_conf.RCF_AddressOffset = value;
+		else if (addr == DDC_RCF_FILTER_TAPS)
+			ddc_conf.RCF_FilterTaps = value;
+		addr_start += 16;
+		val_start += 16;
+	}
+	USR_DDC_Init(ddc_conf);
+}
+
+uint16_t get_addr(uint8_t *s, int16_t start)
+{
+	// uint16_t address = 0;
+	// address = address +
+	return (s[start] - '0') * 10 + (s[start+1] - '0') + 0x300;
+}
+
+uint64_t get_value(uint8_t *s, int16_t start)
+{
+	uint64_t b = 0;
+	uint8_t i = 0;
+	for (; i < 12; i++)
+    {
+	   b = b + (s[start+i] - '0') * pow(10, 11-i);
+    }
+	return b;
 }
