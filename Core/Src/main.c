@@ -85,8 +85,6 @@ static void MX_TIM2_Init(void);
 static void MX_TIM3_Init(void);
 /* USER CODE BEGIN PFP */
 void init_buffer();
-uint16_t get_addr(uint8_t *s, int16_t start);
-uint64_t get_value(uint8_t *s, int16_t start);
 void DDC_Config_Init();
 /* USER CODE END PFP */
 
@@ -157,7 +155,7 @@ int main(void)
 	DDC_Config_Init();
 
 	/* DMA start IC */
-	HAL_Delay(3000);
+	HAL_Delay(5000);
 	if (HAL_TIM_IC_Start_DMA(&htim1, TIM_CHANNEL_4, (uint32_t *)(buffers[dbuf_index] + HEADER_SIZE), 500) != HAL_OK) for(;;);
 	else dbuf_index++;
 	/* ---------------------------------------------------- DDC END */
@@ -613,9 +611,9 @@ void DDC_Config_Init()
 	ddc_main_conf.NCO_Frequency 	= 0x0000DA740E;
 	ddc_main_conf.NCO_PhaseOffset 	= 0;
 	ddc_main_conf.CIC2_Scale 		= 6;
-	ddc_main_conf.CIC2_Decimation 	= 4;
+	ddc_main_conf.CIC2_Decimation 	= 9;
 	ddc_main_conf.CIC5_Scale 		= 6;
-	ddc_main_conf.CIC5_Decimation 	= 5;
+	ddc_main_conf.CIC5_Decimation 	= 9;
 	ddc_main_conf.RCF_Scale 		= 4;
 	ddc_main_conf.RCF_Decimation 	= 0;
 	ddc_main_conf.RCF_AddressOffset = 0;
