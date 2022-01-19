@@ -24,6 +24,7 @@
 /* USER CODE BEGIN Includes */
 #include "udp_server.h"
 #include "ddc.h"
+#include "dac.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -128,45 +129,49 @@ int main(void)
   MX_TIM3_Init();
   MX_LWIP_Init();
   /* USER CODE BEGIN 2 */
-    /* ---------------------------------------------------- SETUP START */
+  /* ---------------------------------------------------- SETUP START */
 
-  	init_buffer();
-	/* ---------------------------------------------------- UDP START */
-	USR_UDP_Init(udp_ip, UDP_SEND_PORT, UDP_RECEIVE_PORT);
-	/* ---------------------------------------------------- UDP END   */
+  init_buffer();
+  /* ---------------------------------------------------- UDP START */
+  USR_UDP_Init(udp_ip, UDP_SEND_PORT, UDP_RECEIVE_PORT);
+  /* ---------------------------------------------------- UDP END   */
 
-	/* ---------------------------------------------------- CODER START */
-	HAL_TIM_Base_Start_IT(&htim3);
-	/* ---------------------------------------------------- CODER END   */
+  /* ---------------------------------------------------- CODER START */
+  HAL_TIM_Base_Start_IT(&htim3);
+  /* ---------------------------------------------------- CODER END   */
 
-	/* ---------------------------------------------------- DDC START */
-	HAL_GPIO_WritePin(GPIOA, OSC_EN_Pin, GPIO_PIN_RESET);
+  /* ---------------------------------------------------- DDC START */
+  HAL_GPIO_WritePin(GPIOA, OSC_EN_Pin, GPIO_PIN_RESET);
 
-	/* Switch */
-	HAL_GPIO_WritePin(GPIOB, SW_A_Pin, GPIO_PIN_RESET);
-	HAL_GPIO_WritePin(GPIOB, SW_B_Pin, GPIO_PIN_SET);
+  /* Switch */
+  HAL_GPIO_WritePin(GPIOB, SW_A_Pin, GPIO_PIN_RESET);
+  HAL_GPIO_WritePin(GPIOB, SW_B_Pin, GPIO_PIN_SET);
 
-	/* ADC, DDC Clock 5MHz */
-	HAL_TIM_Base_Start(&htim8);
-	HAL_TIM_OC_Start(&htim8, TIM_CHANNEL_2);
-	HAL_TIM_OC_Start(&htim8, TIM_CHANNEL_1);
+  /* ADC, DDC Clock 5MHz */
+  HAL_TIM_Base_Start(&htim8);
+  HAL_TIM_OC_Start(&htim8, TIM_CHANNEL_2);
+  HAL_TIM_OC_Start(&htim8, TIM_CHANNEL_1);
 
-	DDC_Config_Init();
+  DDC_Config_Init();
 
-	/* DMA start IC */
-	HAL_Delay(5000);
-	if (HAL_TIM_IC_Start_DMA(&htim1, TIM_CHANNEL_4, (uint32_t *)(buffers[dbuf_index] + HEADER_SIZE), 500) != HAL_OK) for(;;);
-	else dbuf_index++;
-	/* ---------------------------------------------------- DDC END */
+  /* DMA start IC */
+  HAL_Delay(5000);
+  if (HAL_TIM_IC_Start_DMA(&htim1, TIM_CHANNEL_4, (uint32_t *)(buffers[dbuf_index] + HEADER_SIZE), 500) != HAL_OK) for(;;);
+  else dbuf_index++;
+  /* ---------------------------------------------------- DDC END */
 
-	/* ---------------------------------------------------- SETUP CHECK */
-	HAL_GPIO_WritePin(GPIOB, LED_Pin, GPIO_PIN_SET);
-	if (0) // TODO check PHY green led by GPIO pin
-	{
-		HAL_Delay(1000);
-		HAL_NVIC_SystemReset();
-	}
-	/* ---------------------------------------------------- SETUP END */
+  /* ---------------------------------------------------- DAC START */
+  USR_DAC_Init();
+  /* ---------------------------------------------------- DAC END */
+
+  /* ---------------------------------------------------- SETUP CHECK */
+  HAL_GPIO_WritePin(GPIOB, LED_Pin, GPIO_PIN_SET);
+  if (0) // TODO check PHY green led by GPIO pin
+  {
+	  HAL_Delay(1000);
+	  HAL_NVIC_SystemReset();
+  }
+  /* ---------------------------------------------------- SETUP END */
 
   /* USER CODE END 2 */
 
@@ -638,6 +643,8 @@ void USR_UDP_ReceiveCallback(struct pbuf *p, const uint32_t addr, const uint16_t
 			HAL_GPIO_TogglePin(GPIOB, LED_Pin);
 		if (pptr[0] == 'A')
 			USR_DDC_UdpHandler(pptr);
+		if (pptr[0] == 'D')
+			USR_DAC_UdpHandler(pptr);
 		if (pptr[0] == 'R')
 			/* TODO */
 			/* Send DDC configuration to PC using UDP */
