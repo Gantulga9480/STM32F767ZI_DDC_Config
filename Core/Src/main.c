@@ -128,7 +128,6 @@ int main(void)
   MX_TIM3_Init();
   MX_LWIP_Init();
   /* USER CODE BEGIN 2 */
-
     /* ---------------------------------------------------- SETUP START */
 
   	init_buffer();
@@ -160,7 +159,13 @@ int main(void)
 	else dbuf_index++;
 	/* ---------------------------------------------------- DDC END */
 
+	/* ---------------------------------------------------- SETUP CHECK */
 	HAL_GPIO_WritePin(GPIOB, LED_Pin, GPIO_PIN_SET);
+	if (0) // TODO check PHY green led by GPIO pin
+	{
+		HAL_Delay(1000);
+		HAL_NVIC_SystemReset();
+	}
 	/* ---------------------------------------------------- SETUP END */
 
   /* USER CODE END 2 */
