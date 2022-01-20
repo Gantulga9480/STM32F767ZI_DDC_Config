@@ -17,12 +17,14 @@
   */
 /* USER CODE END Header */
 /* Includes ------------------------------------------------------------------*/
+#include <sbuf.h>
 #include "main.h"
 #include "lwip.h"
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
 #include "udp_server.h"
+#include "sbuf.h"
 #include "ddc.h"
 #include "dac.h"
 /* USER CODE END Includes */
@@ -163,6 +165,10 @@ int main(void)
   /* ---------------------------------------------------- DAC START */
   USR_DAC_Init();
   /* ---------------------------------------------------- DAC END */
+
+  /* ---------------------------------------------------- SBUF START */
+  USR_SBUF_Init();
+  /* ---------------------------------------------------- SBUF END */
 
   /* ---------------------------------------------------- SETUP CHECK */
   HAL_GPIO_WritePin(GPIOB, LED_Pin, GPIO_PIN_SET);
@@ -645,6 +651,8 @@ void USR_UDP_ReceiveCallback(struct pbuf *p, const uint32_t addr, const uint16_t
 			USR_DDC_UdpHandler(pptr);
 		if (pptr[0] == 'D')
 			USR_DAC_UdpHandler(pptr);
+		if (pptr[0] == 'S')
+			USR_SBUF_UdpHandler(pptr);
 		if (pptr[0] == 'R')
 			/* TODO */
 			/* Send DDC configuration to PC using UDP */
