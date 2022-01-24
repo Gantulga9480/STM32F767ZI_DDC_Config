@@ -66,6 +66,8 @@ typedef struct
 	uint64_t RCF_FilterTaps;     // N taps N-1
 } DDC_ConfigTypeDef;
 
+uint8_t DDC_READY_FLAG;
+
 void USR_DDC_Init(DDC_ConfigTypeDef conf);
 void USR_DDC_FIR_Set(int16_t *filter);
 void USR_DDC_UdpHandler(uint8_t *udp_data);

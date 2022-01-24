@@ -10,8 +10,6 @@
 #include "string.h"
 #include "math.h"
 
-uint8_t DDC_READY_FLAG;
-
 int16_t *DDC_FIR_COEF;
 
 void USR_DDC_Init(DDC_ConfigTypeDef conf)
@@ -198,13 +196,6 @@ void hardReset()
 	HAL_Delay(1);
 	HAL_GPIO_WritePin(GPIOC, DDC1_RST_Pin, GPIO_PIN_SET);
 }
-void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
-{
-	if(GPIO_Pin == GPIO_PIN_8) // If The INT Source Is EXTI Line8 (A8 Pin)
-	{
-		DDC_READY_FLAG = 1;
-	}
-}
 void USR_DDC_FIR_Set(int16_t *filter)
 {
 	DDC_FIR_COEF = filter;
@@ -255,8 +246,6 @@ void USR_DDC_UdpHandler(uint8_t *udp_data)
 
 uint16_t get_addr(uint8_t *s, int16_t start)
 {
-	// uint16_t address = 0;
-	// address = address +
 	return (s[start] - '0') * 10 + (s[start+1] - '0') + 0x300;
 }
 
