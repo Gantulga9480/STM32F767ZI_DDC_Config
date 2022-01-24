@@ -10,8 +10,14 @@
 
 typedef enum
 {
-	USR_OK  = 0,
-	USR_ERR = -1,
+	USR_OK       = 0x00U,
+	USR_ERR      = 0x01U
 } USR_StatusTypeDef;
+
+typedef enum
+{
+  USR_UNLOCKED = 0x00U,
+  USR_LOCKED   = 0x01U
+} USR_LockTypeDef;
 
 #endif /* INC_USR_H_ */
