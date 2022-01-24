@@ -69,6 +69,7 @@ static void MX_TIM3_Init(void);
 /* USER CODE BEGIN PFP */
 void UDP_Buffer_Init();
 void DDC_Config_Init();
+USR_StatusTypeDef PHY_Status_Check();
 /* USER CODE END PFP */
 
 /* Private user code ---------------------------------------------------------*/
@@ -132,9 +133,6 @@ int main(void)
   HAL_TIM_OC_Start(&htim8, TIM_CHANNEL_1);
 
   DDC_Config_Init();
-
-  /* Delay for PHY setup */
-  HAL_Delay(5000);
   /* ---------------------------------------------------- DDC END */
 
   /* ---------------------------------------------------- CODER START */
@@ -150,11 +148,16 @@ int main(void)
   /* ---------------------------------------------------- SBUF END */
 
   /* ---------------------------------------------------- SETUP CHECK */
-
-  if (0) // TODO check PHY green led by GPIO pin
+  /*  */
+  HAL_GPIO_WritePin(PHY_RESET_GPIO_Port, PHY_RESET_Pin, GPIO_PIN_SET);
+  /* Delay for PHY setup */
+  HAL_Delay(5000);
+  while (PHY_Status_Check() != USR_OK)
   {
-	  HAL_Delay(1000);
-	  HAL_NVIC_SystemReset();
+	  HAL_GPIO_WritePin(PHY_RESET_GPIO_Port, PHY_RESET_Pin, GPIO_PIN_RESET);
+	  HAL_Delay(1);
+	  HAL_GPIO_WritePin(PHY_RESET_GPIO_Port, PHY_RESET_Pin, GPIO_PIN_SET);
+	  HAL_Delay(8000);
   }
 
   HAL_GPIO_WritePin(GPIOB, LED_Pin, GPIO_PIN_SET);
@@ -732,6 +735,24 @@ void UDP_Buffer_Init()
 		/* FOOTER */
 		for (j = 0; j < FOOTER_SIZE; j++) { buffers[i][HEADER_SIZE + BUFFER_SIZE + j] = FOOTER; }
 	}
+}
+
+USR_StatusTypeDef PHY_Status_Check()
+{
+	uint8_t count = 0;
+	for (;count < 8; count++)
+	{
+		if (HAL_GPIO_ReadPin(PHY_GREEN_LED_GPIO_Port, PHY_GREEN_LED_Pin))
+		{
+			/* Pass */
+			HAL_Delay(250);
+		}
+		else
+		{
+			return USR_ERR;
+		}
+	}
+	return USR_OK;
 }
 
 /* USER CODE END 4 */
