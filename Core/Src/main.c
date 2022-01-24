@@ -22,6 +22,8 @@
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
+#include "defs.h"
+#include "vars.h"
 #include "udp_server.h"
 #include "sbuf.h"
 #include "ddc.h"
@@ -35,17 +37,7 @@
 
 /* Private define ------------------------------------------------------------*/
 /* USER CODE BEGIN PD */
-#define UDP_SEND_PORT 10
-#define UDP_RECEIVE_PORT 11
 
-#define BUFFER_COUNT 5
-#define BUFFER_SIZE 500 // 1000 byte
-#define HEADER_SIZE 2   // 4 byte
-#define FOOTER_SIZE 2   // 4 byte
-#define PACKET_SIZE (BUFFER_SIZE + HEADER_SIZE + FOOTER_SIZE)*2 // 16 bit size to 8 bit size
-
-#define HEADER (('B' << 8) + 'A')    // ABAB
-#define FOOTER (('D' << 8) + 'C')    // CDCD
 /* USER CODE END PD */
 
 /* Private macro -------------------------------------------------------------*/
@@ -62,24 +54,7 @@ TIM_HandleTypeDef htim8;
 DMA_HandleTypeDef hdma_tim1_ch4_trig_com;
 
 /* USER CODE BEGIN PV */
-
 struct IP4_Container udp_ip = {10, 3, 4, 28}; // 10.3.4.28:UDP_SEND_PORT
-
-uint16_t code[6] = {1, 0, 1, 0, 1, 0};
-
-uint8_t code_index = 0;
-uint8_t dbuf_index = 0;
-uint8_t prev_index = 0;
-
-int16_t DDC_Buffer1[HEADER_SIZE + BUFFER_SIZE + FOOTER_SIZE];
-int16_t DDC_Buffer2[HEADER_SIZE + BUFFER_SIZE + FOOTER_SIZE];
-int16_t DDC_Buffer3[HEADER_SIZE + BUFFER_SIZE + FOOTER_SIZE];
-int16_t DDC_Buffer4[HEADER_SIZE + BUFFER_SIZE + FOOTER_SIZE];
-int16_t DDC_Buffer5[HEADER_SIZE + BUFFER_SIZE + FOOTER_SIZE];
-
-int16_t *buffers[] = {DDC_Buffer1, DDC_Buffer2, DDC_Buffer3, DDC_Buffer4, DDC_Buffer5};
-
-uint32_t dma_index = 0;
 volatile uint8_t UDP_LOCK = USR_UNLOCKED;
 /* USER CODE END PV */
 
@@ -92,7 +67,7 @@ static void MX_DMA_Init(void);
 static void MX_TIM2_Init(void);
 static void MX_TIM3_Init(void);
 /* USER CODE BEGIN PFP */
-void init_buffer();
+void UDP_Buffer_Init();
 void DDC_Config_Init();
 /* USER CODE END PFP */
 
@@ -138,7 +113,7 @@ int main(void)
   /* USER CODE BEGIN 2 */
   /* ---------------------------------------------------- SETUP START */
 
-  init_buffer();
+  UDP_Buffer_Init();
 
   /* ---------------------------------------------------- UDP START */
   USR_UDP_Init(udp_ip, UDP_SEND_PORT, UDP_RECEIVE_PORT);
@@ -175,12 +150,14 @@ int main(void)
   /* ---------------------------------------------------- SBUF END */
 
   /* ---------------------------------------------------- SETUP CHECK */
-  HAL_GPIO_WritePin(GPIOB, LED_Pin, GPIO_PIN_SET);
+
   if (0) // TODO check PHY green led by GPIO pin
   {
 	  HAL_Delay(1000);
 	  HAL_NVIC_SystemReset();
   }
+
+  HAL_GPIO_WritePin(GPIOB, LED_Pin, GPIO_PIN_SET);
   /* ---------------------------------------------------- SETUP END */
 
   /* USER CODE END 2 */
@@ -523,7 +500,7 @@ static void MX_GPIO_Init(void)
   /*Configure GPIO pin Output Level */
   HAL_GPIO_WritePin(GPIOG, DDC_CD0_Pin|DDC_CD1_Pin|DDC_CD2_Pin|DDC_CD3_Pin
                           |DDC_CD4_Pin|DDC_CD5_Pin|DDC_CD6_Pin|DDC_CD7_Pin
-                          |DDC_WR_Pin|DDC_RD_Pin, GPIO_PIN_RESET);
+                          |DDC_WR_Pin|DDC_RD_Pin|PHY_RESET_Pin, GPIO_PIN_RESET);
 
   /*Configure GPIO pin : USER_BTN_Pin */
   GPIO_InitStruct.Pin = USER_BTN_Pin;
@@ -581,10 +558,10 @@ static void MX_GPIO_Init(void)
 
   /*Configure GPIO pins : DDC_CD0_Pin DDC_CD1_Pin DDC_CD2_Pin DDC_CD3_Pin
                            DDC_CD4_Pin DDC_CD5_Pin DDC_CD6_Pin DDC_CD7_Pin
-                           DDC_WR_Pin DDC_RD_Pin */
+                           DDC_WR_Pin DDC_RD_Pin PHY_RESET_Pin */
   GPIO_InitStruct.Pin = DDC_CD0_Pin|DDC_CD1_Pin|DDC_CD2_Pin|DDC_CD3_Pin
                           |DDC_CD4_Pin|DDC_CD5_Pin|DDC_CD6_Pin|DDC_CD7_Pin
-                          |DDC_WR_Pin|DDC_RD_Pin;
+                          |DDC_WR_Pin|DDC_RD_Pin|PHY_RESET_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
@@ -602,11 +579,11 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   HAL_GPIO_Init(GPIOD, &GPIO_InitStruct);
 
-  /*Configure GPIO pin : DDC1_DV_Pin */
-  GPIO_InitStruct.Pin = DDC1_DV_Pin;
+  /*Configure GPIO pins : DDC1_DV_Pin PHY_GREEN_LED_Pin */
+  GPIO_InitStruct.Pin = DDC1_DV_Pin|PHY_GREEN_LED_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
-  HAL_GPIO_Init(DDC1_DV_GPIO_Port, &GPIO_InitStruct);
+  HAL_GPIO_Init(GPIOG, &GPIO_InitStruct);
 
   /*Configure GPIO pin : DDC1_RDY_Pin */
   GPIO_InitStruct.Pin = DDC1_RDY_Pin;
@@ -676,10 +653,13 @@ void USR_UDP_ReceiveCallback(struct pbuf *p, const uint32_t addr, const uint16_t
 
 void HAL_TIM_IC_CaptureCallback(TIM_HandleTypeDef *htim)
 {
+	/* Timer1 IC DMA transfer complete callback */
 	if (htim->Instance == htim1.Instance)
 	{
-		/* Send DDC data to PC through Ethernet */
+		/* Start another DDC to STM32 DMA transfer */
 		if (HAL_TIM_IC_Start_DMA(&htim1, TIM_CHANNEL_4, (uint32_t *)(buffers[dbuf_index] + HEADER_SIZE), 500) != HAL_OK) for (;;);
+
+		/* Send buffered DDC data to PC */
 		if (UDP_LOCK == USR_UNLOCKED)
 		{
 			UDP_LOCK = USR_LOCKED;
@@ -693,51 +673,63 @@ void HAL_TIM_IC_CaptureCallback(TIM_HandleTypeDef *htim)
 
 void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 {
+	/* Coder 110ms timer interrupt */
 	if (htim->Instance == htim3.Instance)
 	{
 		code_index = 0;
+		/* Start coder small delay timer */
 		HAL_TIM_Base_Start_IT(&htim2);
 	}
 }
 
 void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
 {
+	/* DDC programming */
 	if (GPIO_Pin == GPIO_PIN_8)
 	{
 		DDC_READY_FLAG = 1;
 	}
+
+	/* Pmod sync operation */
 	if (GPIO_Pin == GPIO_PIN_0)
 	{
+		/* Pmod Rising edge */
 		if (HAL_GPIO_ReadPin(GPIOB, GPIO_PIN_0))
 		{
+			/* Stop IC DMA in IT mode */
 			HAL_TIM_IC_Stop_DMA(&htim1, TIM_CHANNEL_4);
-			dma_index = __HAL_DMA_GET_COUNTER(&hdma_tim1_ch4_trig_com);
+
+			/* Send buffered DDC data to PC */
 			if (UDP_LOCK == USR_UNLOCKED)
 			{
 				UDP_LOCK = USR_LOCKED;
-				USR_UDP_Send(UDP_SEND_PORT, (uint8_t *)buffers[prev_index], (PACKET_SIZE - ((dma_index + FOOTER_SIZE) * 2)));
+				USR_UDP_Send(UDP_SEND_PORT, (uint8_t *)buffers[prev_index], (PACKET_SIZE - ((__HAL_DMA_GET_COUNTER(&hdma_tim1_ch4_trig_com) + FOOTER_SIZE) * 2)));
 				UDP_LOCK = USR_UNLOCKED;
 			}
 		}
+		/* Pmod Falling edge */
 		else
 		{
+			/* Start IC DMA DDC to STM32 transfer */
 			HAL_TIM_IC_Start_DMA(&htim1, TIM_CHANNEL_4, (uint32_t *)(buffers[0] + HEADER_SIZE), BUFFER_SIZE);
-			dbuf_index = 1;
-			prev_index = 0;
+			dbuf_index = 1; prev_index = 0;
 		}
 	}
 }
 
-void init_buffer()
+/* DDC data buffer, Insert header footer */
+void UDP_Buffer_Init()
 {
 	int8_t i = 0, j = 0;
 	for (; i < BUFFER_COUNT; i++)
 	{
-		// HEADER
+		/* HEADER */
 		for (j = 0; j < HEADER_SIZE; j++) { buffers[i][j] = HEADER; }
+
+		/* Insert buffer index in header */
 		buffers[i][0] = (i + 49);
 
-		// FOOTER
+		/* FOOTER */
 		for (j = 0; j < FOOTER_SIZE; j++) { buffers[i][HEADER_SIZE + BUFFER_SIZE + j] = FOOTER; }
 	}
 }
