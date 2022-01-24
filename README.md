@@ -20,10 +20,15 @@ HAL -> stm32f7xx_it.c -> TIM2_IRQHandler(void)
     removed
     HAL_TIM_IRQHandler(&htim2);
 
-USR -> udp_server.c -> 74
+HAL -> stm32f7xx_hal_dma.c -> 464
     added
-        udp connect in udp init
-    udp_connect(&my_upcb, &my_addr, sendPort);
+        fixed DMA HAL_LOCKED bug
+    __HAL_UNLOCK(hdma);
+
+HAL -> stm32f7xx_hal_dma.c -> 470
+    added
+        fixed HAL_DMA_STATE_ABORT state bug
+    if (hdma->State == HAL_DMA_STATE_ABORT) hdma->State = HAL_DMA_STATE_READY;
 
 IQ_out DMA2 Channel 4, TIM1 Channel 4
 AB_out DMA2 Channel 6, TIM1 Channel 3
