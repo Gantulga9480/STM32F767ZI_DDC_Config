@@ -28,6 +28,7 @@
 #include "sbuf.h"
 #include "ddc.h"
 #include "dac.h"
+#include "coder.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -56,6 +57,7 @@ DMA_HandleTypeDef hdma_tim1_ch4_trig_com;
 /* USER CODE BEGIN PV */
 struct IP4_Container udp_ip = {10, 3, 4, 28}; // 10.3.4.28:UDP_SEND_PORT
 volatile uint8_t UDP_LOCK = USR_UNLOCKED;
+uint8_t CODE_DATA_READY = 0;
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -124,8 +126,8 @@ int main(void)
   HAL_GPIO_WritePin(GPIOA, OSC_EN_Pin, GPIO_PIN_RESET);
 
   /* Switch */
-  HAL_GPIO_WritePin(GPIOB, SW_A_Pin, GPIO_PIN_RESET);
-  HAL_GPIO_WritePin(GPIOB, SW_B_Pin, GPIO_PIN_SET);
+  HAL_GPIO_WritePin(GPIOB, SW_A_Pin, GPIO_PIN_SET);
+  HAL_GPIO_WritePin(GPIOB, SW_B_Pin, GPIO_PIN_RESET);
 
   /* ADC, DDC Clock 5MHz */
   HAL_TIM_Base_Start(&htim8);
@@ -640,13 +642,15 @@ void USR_UDP_ReceiveCallback(struct pbuf *p, const uint32_t addr, const uint16_t
 		uint8_t *pptr = (uint8_t *)p->payload;
 		if (pptr[0] == 'L')
 			HAL_GPIO_TogglePin(GPIOB, LED_Pin);
-		if (pptr[0] == 'A')
+		else if (pptr[0] == 'A')
 			USR_DDC_UdpHandler(pptr);
-		if (pptr[0] == 'D')
+		else if (pptr[0] == 'D')
 			USR_DAC_UdpHandler(pptr);
-		if (pptr[0] == 'S')
+		else if (pptr[0] == 'S')
 			USR_SBUF_UdpHandler(pptr);
-		if (pptr[0] == 'R')
+		// else if (pptr[0] == 'C')
+		//	USR_CODER_UdpHandler(pptr);
+		else if (pptr[0] == 'R')
 			/* TODO */
 			/* Send DDC configuration to PC using UDP */
 			/* Make DDC configuration struct public */
@@ -706,7 +710,7 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
 			if (UDP_LOCK == USR_UNLOCKED)
 			{
 				UDP_LOCK = USR_LOCKED;
-				USR_UDP_Send(UDP_SEND_PORT, (uint8_t *)buffers[prev_index], (PACKET_SIZE - ((__HAL_DMA_GET_COUNTER(&hdma_tim1_ch4_trig_com) + FOOTER_SIZE) * 2)));
+				USR_UDP_Send(UDP_SEND_PORT, (uint8_t *)buffers[prev_index], ((HEADER_SIZE + (BUFFER_SIZE - __HAL_DMA_GET_COUNTER(&hdma_tim1_ch4_trig_com))) * 2));
 				UDP_LOCK = USR_UNLOCKED;
 			}
 		}
