@@ -609,6 +609,7 @@ static void MX_GPIO_Init(void)
 
 void DDC_Config_Init()
 {
+	USR_DDC_FIR_Set(coef);
 	DDC_ConfigTypeDef ddc_main_conf;
 	ddc_main_conf.DDC_Mode 			= 8;
 	ddc_main_conf.NCO_Mode 			= 0;
@@ -622,7 +623,7 @@ void DDC_Config_Init()
 	ddc_main_conf.RCF_Scale 		= 4;
 	ddc_main_conf.RCF_Decimation 	= 0;
 	ddc_main_conf.RCF_AddressOffset = 0;
-	ddc_main_conf.RCF_FilterTaps    = 0;
+	ddc_main_conf.RCF_FilterTaps    = 99;
 	USR_DDC_Init(ddc_main_conf);
 }
 
