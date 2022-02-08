@@ -71,6 +71,8 @@ static void MX_TIM3_Init(void);
 /* USER CODE BEGIN PFP */
 void UDP_Buffer_Init();
 void DDC_Config_Init();
+void SW_Set(uint8_t mode);
+void PHY_Init();
 USR_StatusTypeDef PHY_Status_Check();
 /* USER CODE END PFP */
 
@@ -118,18 +120,22 @@ int main(void)
 
   UDP_Buffer_Init();
 
+  /* ---------------------------------------------------- PHY START */
+  PHY_Init();
+  /* ---------------------------------------------------- PHY END   */
+
   /* ---------------------------------------------------- UDP START */
   USR_UDP_Init(udp_ip, UDP_SEND_PORT, UDP_RECEIVE_PORT);
   /* ---------------------------------------------------- UDP END   */
 
   /* ---------------------------------------------------- DDC START */
-  HAL_GPIO_WritePin(GPIOA, OSC_EN_Pin, GPIO_PIN_RESET);
+  /* Switch
+   * SW_INT for internal OSC
+   * SW_EXT for external OSC
+   * */
+  SW_Set(SW_EXT);
 
-  /* Switch */
-  HAL_GPIO_WritePin(GPIOB, SW_A_Pin, GPIO_PIN_SET);
-  HAL_GPIO_WritePin(GPIOB, SW_B_Pin, GPIO_PIN_RESET);
-
-  /* ADC, DDC Clock 5MHz */
+  /* ADC, DDC Clock 30MHz */
   HAL_TIM_Base_Start(&htim8);
   HAL_TIM_OC_Start(&htim8, TIM_CHANNEL_2);
   HAL_TIM_OC_Start(&htim8, TIM_CHANNEL_1);
@@ -149,19 +155,7 @@ int main(void)
   USR_SBUF_Init();
   /* ---------------------------------------------------- SBUF END */
 
-  /* ---------------------------------------------------- SETUP CHECK */
-  /*  */
-  HAL_GPIO_WritePin(PHY_RESET_GPIO_Port, PHY_RESET_Pin, GPIO_PIN_SET);
-  /* Delay for PHY setup */
-  HAL_Delay(5000);
-  while (PHY_Status_Check() != USR_OK)
-  {
-	  HAL_GPIO_WritePin(PHY_RESET_GPIO_Port, PHY_RESET_Pin, GPIO_PIN_RESET);
-	  HAL_Delay(1);
-	  HAL_GPIO_WritePin(PHY_RESET_GPIO_Port, PHY_RESET_Pin, GPIO_PIN_SET);
-	  HAL_Delay(8000);
-  }
-
+  /* Setup Done */
   HAL_GPIO_WritePin(GPIOB, LED_Pin, GPIO_PIN_SET);
   /* ---------------------------------------------------- SETUP END */
 
@@ -741,6 +735,20 @@ void UDP_Buffer_Init()
 	}
 }
 
+void PHY_Init()
+{
+	HAL_GPIO_WritePin(PHY_RESET_GPIO_Port, PHY_RESET_Pin, GPIO_PIN_SET);
+	/* Delay for PHY setup */
+	HAL_Delay(5000);
+	while (PHY_Status_Check() != USR_OK)
+	{
+		HAL_GPIO_WritePin(PHY_RESET_GPIO_Port, PHY_RESET_Pin, GPIO_PIN_RESET);
+		HAL_Delay(100);
+		HAL_GPIO_WritePin(PHY_RESET_GPIO_Port, PHY_RESET_Pin, GPIO_PIN_SET);
+		HAL_Delay(5000);
+	}
+}
+
 USR_StatusTypeDef PHY_Status_Check()
 {
 	uint8_t count = 0;
@@ -757,6 +765,22 @@ USR_StatusTypeDef PHY_Status_Check()
 		}
 	}
 	return USR_OK;
+}
+
+void SW_Set(uint8_t mode)
+{
+	if (mode == SW_INT)
+	{
+		HAL_GPIO_WritePin(GPIOA, OSC_EN_Pin, GPIO_PIN_SET);
+		HAL_GPIO_WritePin(GPIOB, SW_A_Pin, GPIO_PIN_SET);
+		HAL_GPIO_WritePin(GPIOB, SW_B_Pin, GPIO_PIN_RESET);
+	}
+	else if (mode == SW_EXT)
+	{
+		HAL_GPIO_WritePin(GPIOA, OSC_EN_Pin, GPIO_PIN_RESET);
+		HAL_GPIO_WritePin(GPIOB, SW_A_Pin, GPIO_PIN_RESET);
+		HAL_GPIO_WritePin(GPIOB, SW_B_Pin, GPIO_PIN_SET);
+	}
 }
 
 /* USER CODE END 4 */

@@ -20,4 +20,7 @@
 #define HEADER (('B' << 8) + 'A')    // ABAB
 #define FOOTER (('D' << 8) + 'C')    // CDCD
 
+#define SW_INT 0
+#define SW_EXT 1
+
 #endif /* INC_DEFS_H_ */
