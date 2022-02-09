@@ -8,8 +8,8 @@
 #ifndef INC_DDC_H_
 #define INC_DDC_H_
 
-#define MAX_RCF_RAM_SIZE 255
-#define RCF_SIZE         128
+#define MAX_RCF_RAM_SIZE 256
+#define RCF_SIZE         100
 
 #define DDC_SOFT_RESET 0x01
 #define DDC_RESERVED   0x00
@@ -64,12 +64,12 @@ typedef struct
 	uint64_t RCF_Decimation;     // RCF Decimation N-1
 	uint64_t RCF_AddressOffset;  // RCF address offset
 	uint64_t RCF_FilterTaps;     // N taps N-1
+	uint8_t  FIR;				 // FIR using
 } DDC_ConfigTypeDef;
 
 uint8_t DDC_READY_FLAG;
 
 void USR_DDC_Init(DDC_ConfigTypeDef conf);
-void USR_DDC_FIR_Set(int16_t *filter);
 void USR_DDC_UdpHandler(uint8_t *udp_data);
 
 uint64_t write_ddc(uint16_t address, uint64_t data);
@@ -83,7 +83,7 @@ uint16_t uPort_read(uint8_t address);
 uint8_t uPort_write(uint8_t address, uint8_t data);
 uint16_t get_addr(uint8_t *s, int16_t start);
 uint64_t get_value(uint8_t *s, int16_t start);
-void flush_rcf_ram(); // deprecated;
 void flush_iq_ram();  // deprecated
+void flush_RCF_ram();
 
 #endif /* INC_DDC_H_ */

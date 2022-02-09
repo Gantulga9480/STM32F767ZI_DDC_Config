@@ -10,13 +10,16 @@
 #include "string.h"
 #include "math.h"
 
-int16_t *DDC_FIR_COEF;
+int16_t DDC_FIR_COEF[RCF_SIZE] = {
+    0, 0, 0, -1, 1, -1, 1, -1, 1, -1, 1, 0, 0, 0, -1, 1, -2, 3, -3, 4, -4, 5, -5, 4, -4, 3, -2, 0, 2, -4, 7, -9, 12, -14, 16, -18, 19, -19, 18, -16, 13, -7, 0, 10, -23, 41, -67, 110, -201, 633, 633, -201, 110, -67, 41, -23, 10, 0, -7, 13, -16, 18, -19, 19, -18, 16, -14, 12, -9, 7, -4, 2, 0, -2, 3, -4, 4, -5, 5, -4, 4, -3, 3, -2, 1, -1, 0, 0, 0, 1, -1, 1, -1, 1, -1, 1, -1, 0, 0, 0,
+};
 
 void USR_DDC_Init(DDC_ConfigTypeDef conf)
 {
 	hardReset();                                               // Hard reset
-	// write_rcf_ram();                                        // Write only when using FIR otherwise DDC will not work
-	flush_iq_ram();
+	if (conf.FIR) write_rcf_ram();                             // Write FIR rams if using
+	//else flush_RCF_ram();
+	flush_iq_ram();											   // Flush remaining I and Q data in DDC rams
 	write_ddc(DDC_MODE,               DDC_SOFT_RESET);         // Soft reset
 	write_ddc(DDC_NCO_MODE,           conf.NCO_Mode);          // NCO active, Phase-Amplitude Dither
 	write_ddc(DDC_NCO_SYNC_MASK,      0x00FFFFFFFF);           // NCO Sync mask
@@ -33,31 +36,72 @@ void USR_DDC_Init(DDC_ConfigTypeDef conf)
 	write_ddc(0x30D,                  DDC_RESERVED);           // Reserved
 	write_ddc(DDC_MODE,               conf.DDC_Mode);   	   // Operating mode
 }
-
+void USR_DDC_UdpHandler(uint8_t *udp_data)
+{
+	uint16_t addr = 0, i = 0;
+	uint64_t value = 0;
+	DDC_ConfigTypeDef ddc_conf;
+	int16_t addr_start = 1;
+	int16_t val_start = 4;
+	for (; i < 14; i++)
+	{
+		addr = get_addr(udp_data, addr_start);
+		value = get_value(udp_data, val_start);
+		if (addr == DDC_MODE)
+			ddc_conf.DDC_Mode = value;
+		else if (addr == DDC_NCO_MODE)
+			ddc_conf.NCO_Mode = value;
+		else if (addr == DDC_NCO_SYNC_MASK)
+			ddc_conf.NCO_SyncMask = value;
+		else if (addr == DDC_NCO_FREQUENCY)
+			ddc_conf.NCO_Frequency = value;
+		else if (addr == DDC_NCO_PHASE_OFFSET)
+			ddc_conf.NCO_PhaseOffset = value;
+		else if (addr == DDC_CIC2_SCALE)
+			ddc_conf.CIC2_Scale = value;
+		else if (addr == DDC_CIC2_DECIMATION)
+			ddc_conf.CIC2_Decimation = value;
+		else if (addr == DDC_CIC5_SCALE)
+			ddc_conf.CIC5_Scale = value;
+		else if (addr == DDC_CIC5_DECIMATION)
+			ddc_conf.CIC5_Decimation = value;
+		else if (addr == DDC_RCF_SCALE)
+			ddc_conf.RCF_Scale = value;
+		else if (addr == DDC_RCF_DECIMATION)
+			ddc_conf.RCF_Decimation = value;
+		else if (addr == DDC_RCF_ADDRESS_OFFSET)
+			ddc_conf.RCF_AddressOffset = value;
+		else if (addr == DDC_RCF_FILTER_TAPS)
+			ddc_conf.RCF_FilterTaps = value;
+		else
+			ddc_conf.FIR = value;
+		addr_start += 16;
+		val_start += 16;
+	}
+	USR_DDC_Init(ddc_conf);
+}
 void flush_iq_ram()
 {
 	uint16_t addr = 0x100;
 	for (; addr <= 0x1FF; addr++)
 	{
-		write_ddc(addr, 0x0000000000);
+		write_ddc(addr, 0x00);
 	}
 }
-void flush_rcf_ram()
+void flush_RCF_ram()
 {
-	uint16_t addr = 0x00, i = 0;
-	for (; i <= MAX_RCF_RAM_SIZE; i++)
+	uint16_t addr = 0x00;
+	for (; addr <= 0x0FF; addr++)
 	{
-		write_ddc(addr, 0x0000000000);
-		addr++;
+		write_ddc(addr, 0x01);
 	}
 }
 void write_rcf_ram()
 {
-	uint16_t addr = 0x00, i = 0;
-	for (; i < RCF_SIZE; i++)
+	uint16_t addr = 0;
+	for (; addr < RCF_SIZE; addr++)
 	{
-		write_ddc(addr, DDC_FIR_COEF[i]);
-		addr++;
+		write_ddc(addr, DDC_FIR_COEF[addr]);
 	}
 }
 uint64_t read_ddc(uint16_t address)
@@ -196,59 +240,10 @@ void hardReset()
 	HAL_Delay(1);
 	HAL_GPIO_WritePin(GPIOC, DDC1_RST_Pin, GPIO_PIN_SET);
 }
-void USR_DDC_FIR_Set(int16_t *filter)
-{
-	DDC_FIR_COEF = filter;
-}
-
-void USR_DDC_UdpHandler(uint8_t *udp_data)
-{
-	uint16_t addr = 0, i = 0;
-	uint64_t value = 0;
-	DDC_ConfigTypeDef ddc_conf;
-	int16_t addr_start = 1;
-	int16_t val_start = 4;
-	for (; i < 13; i++)
-	{
-		addr = get_addr(udp_data, addr_start);
-		value = get_value(udp_data, val_start);
-		if (addr == DDC_MODE)
-			ddc_conf.DDC_Mode = value;
-		else if (addr == DDC_NCO_MODE)
-			ddc_conf.NCO_Mode = value;
-		else if (addr == DDC_NCO_SYNC_MASK)
-			ddc_conf.NCO_SyncMask = value;
-		else if (addr == DDC_NCO_FREQUENCY)
-			ddc_conf.NCO_Frequency = value;
-		else if (addr == DDC_NCO_PHASE_OFFSET)
-			ddc_conf.NCO_PhaseOffset = value;
-		else if (addr == DDC_CIC2_SCALE)
-			ddc_conf.CIC2_Scale = value;
-		else if (addr == DDC_CIC2_DECIMATION)
-			ddc_conf.CIC2_Decimation = value;
-		else if (addr == DDC_CIC5_SCALE)
-			ddc_conf.CIC5_Scale = value;
-		else if (addr == DDC_CIC5_DECIMATION)
-			ddc_conf.CIC5_Decimation = value;
-		else if (addr == DDC_RCF_SCALE)
-			ddc_conf.RCF_Scale = value;
-		else if (addr == DDC_RCF_DECIMATION)
-			ddc_conf.RCF_Decimation = value;
-		else if (addr == DDC_RCF_ADDRESS_OFFSET)
-			ddc_conf.RCF_AddressOffset = value;
-		else if (addr == DDC_RCF_FILTER_TAPS)
-			ddc_conf.RCF_FilterTaps = value;
-		addr_start += 16;
-		val_start += 16;
-	}
-	USR_DDC_Init(ddc_conf);
-}
-
 uint16_t get_addr(uint8_t *s, int16_t start)
 {
 	return (s[start] - '0') * 10 + (s[start+1] - '0') + 0x300;
 }
-
 uint64_t get_value(uint8_t *s, int16_t start)
 {
 	uint64_t b = 0;

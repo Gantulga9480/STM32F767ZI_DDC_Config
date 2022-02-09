@@ -29,6 +29,7 @@
 #include "ddc.h"
 #include "dac.h"
 #include "coder.h"
+#include "usr.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -56,8 +57,7 @@ DMA_HandleTypeDef hdma_tim1_ch4_trig_com;
 
 /* USER CODE BEGIN PV */
 struct IP4_Container udp_ip = {10, 3, 4, 28}; // 10.3.4.28:UDP_SEND_PORT
-volatile uint8_t UDP_LOCK = USR_UNLOCKED;
-uint8_t CODE_DATA_READY = 0;
+uint8_t UDP_LOCK = USR_UNLOCKED;
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -118,14 +118,13 @@ int main(void)
   /* USER CODE BEGIN 2 */
   /* ---------------------------------------------------- SETUP START */
 
-  UDP_Buffer_Init();
-
   /* ---------------------------------------------------- PHY START */
   PHY_Init();
   /* ---------------------------------------------------- PHY END   */
 
   /* ---------------------------------------------------- UDP START */
   USR_UDP_Init(udp_ip, UDP_SEND_PORT, UDP_RECEIVE_PORT);
+  UDP_Buffer_Init();
   /* ---------------------------------------------------- UDP END   */
 
   /* ---------------------------------------------------- DDC START */
@@ -609,7 +608,6 @@ static void MX_GPIO_Init(void)
 
 void DDC_Config_Init()
 {
-	USR_DDC_FIR_Set(coef);
 	DDC_ConfigTypeDef ddc_main_conf;
 	ddc_main_conf.DDC_Mode 			= 8;
 	ddc_main_conf.NCO_Mode 			= 0;
@@ -623,7 +621,8 @@ void DDC_Config_Init()
 	ddc_main_conf.RCF_Scale 		= 4;
 	ddc_main_conf.RCF_Decimation 	= 0;
 	ddc_main_conf.RCF_AddressOffset = 0;
-	ddc_main_conf.RCF_FilterTaps    = 99;
+	ddc_main_conf.RCF_FilterTaps    = 0;
+	ddc_main_conf.FIR               = false;
 	USR_DDC_Init(ddc_main_conf);
 }
 
@@ -719,7 +718,7 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
 	}
 }
 
-/* DDC data buffer, Insert header footer */
+/* @brief DDC data buffer, Insert header footer */
 void UDP_Buffer_Init()
 {
 	int8_t i = 0, j = 0;
@@ -740,13 +739,15 @@ void PHY_Init()
 {
 	HAL_GPIO_WritePin(PHY_RESET_GPIO_Port, PHY_RESET_Pin, GPIO_PIN_SET);
 	/* Delay for PHY setup */
-	HAL_Delay(5000);
+	HAL_Delay(7000);
 	while (PHY_Status_Check() != USR_OK)
 	{
 		HAL_GPIO_WritePin(PHY_RESET_GPIO_Port, PHY_RESET_Pin, GPIO_PIN_RESET);
-		HAL_Delay(100);
+		HAL_GPIO_WritePin(GPIOB, LED_Pin, GPIO_PIN_RESET);
+		HAL_Delay(500);
+		HAL_GPIO_WritePin(GPIOB, LED_Pin, GPIO_PIN_SET);
 		HAL_GPIO_WritePin(PHY_RESET_GPIO_Port, PHY_RESET_Pin, GPIO_PIN_SET);
-		HAL_Delay(5000);
+		HAL_Delay(7000);
 	}
 }
 

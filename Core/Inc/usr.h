@@ -20,4 +20,10 @@ typedef enum
   USR_LOCKED   = 0x01U
 } USR_LockTypeDef;
 
+typedef enum
+{
+	true  = 0x01,
+	false = 0x00
+} bool;
+
 #endif /* INC_USR_H_ */
