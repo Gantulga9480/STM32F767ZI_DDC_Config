@@ -58,6 +58,7 @@ DMA_HandleTypeDef hdma_tim1_ch4_trig_com;
 /* USER CODE BEGIN PV */
 struct IP4_Container udp_ip = {10, 3, 4, 28}; // 10.3.4.28:UDP_SEND_PORT
 uint8_t UDP_LOCK = USR_UNLOCKED;
+bool setup_done = false;
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -117,6 +118,7 @@ int main(void)
   MX_LWIP_Init();
   /* USER CODE BEGIN 2 */
   /* ---------------------------------------------------- SETUP START */
+  HAL_NVIC_DisableIRQ(EXTI0_IRQn);
 
   /* ---------------------------------------------------- PHY START */
   PHY_Init();
@@ -156,6 +158,8 @@ int main(void)
 
   /* Setup Done */
   HAL_GPIO_WritePin(GPIOB, LED_Pin, GPIO_PIN_SET);
+  setup_done = true;
+  HAL_NVIC_EnableIRQ(EXTI0_IRQn);
   /* ---------------------------------------------------- SETUP END */
 
   /* USER CODE END 2 */
@@ -614,9 +618,9 @@ void DDC_Config_Init()
 	ddc_main_conf.NCO_SyncMask 		= 0x00FFFFFFFF;
 	ddc_main_conf.NCO_Frequency 	= 0x0000DA740E;
 	ddc_main_conf.NCO_PhaseOffset 	= 0;
-	ddc_main_conf.CIC2_Scale 		= 6;
+	ddc_main_conf.CIC2_Scale 		= 0;
 	ddc_main_conf.CIC2_Decimation 	= 9;
-	ddc_main_conf.CIC5_Scale 		= 6;
+	ddc_main_conf.CIC5_Scale 		= 0;
 	ddc_main_conf.CIC5_Decimation 	= 9;
 	ddc_main_conf.RCF_Scale 		= 4;
 	ddc_main_conf.RCF_Decimation 	= 0;
@@ -642,8 +646,8 @@ void USR_UDP_ReceiveCallback(struct pbuf *p, const uint32_t addr, const uint16_t
 			USR_DAC_UdpHandler(pptr);
 		else if (pptr[0] == 'S')
 			USR_SBUF_UdpHandler(pptr);
-		// else if (pptr[0] == 'C')
-		//	USR_CODER_UdpHandler(pptr);
+		else if (pptr[0] == 'C')
+			USR_CODER_UdpHandler(pptr);
 		else if (pptr[0] == 'R')
 			/* TODO */
 			/* Send DDC configuration to PC using UDP */
@@ -661,14 +665,11 @@ void HAL_TIM_IC_CaptureCallback(TIM_HandleTypeDef *htim)
 		if (HAL_TIM_IC_Start_DMA(&htim1, TIM_CHANNEL_4, (uint32_t *)(buffers[dbuf_index] + HEADER_SIZE), 500) != HAL_OK) for (;;);
 
 		/* Send buffered DDC data to PC */
-		if (UDP_LOCK == USR_UNLOCKED)
-		{
-			UDP_LOCK = USR_LOCKED;
-			USR_UDP_Send(UDP_SEND_PORT, (uint8_t *)buffers[prev_index], PACKET_SIZE);
-			prev_index = dbuf_index;
-			dbuf_index++; if (dbuf_index == BUFFER_COUNT) dbuf_index = 0;
-			UDP_LOCK = USR_UNLOCKED;
-		}
+		while (UDP_LOCK == USR_LOCKED) __NOP();
+		UDP_LOCK = USR_LOCKED;
+		USR_UDP_Send(UDP_SEND_PORT, (uint8_t *)buffers[prev_index], PACKET_SIZE);
+		prev_index = dbuf_index; dbuf_index++; if (dbuf_index == BUFFER_COUNT) dbuf_index = 0;
+		UDP_LOCK = USR_UNLOCKED;
 	}
 }
 
@@ -692,7 +693,7 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
 	}
 
 	/* Pmod sync operation */
-	if (GPIO_Pin == GPIO_PIN_0)
+	if ((GPIO_Pin == GPIO_PIN_0) && (setup_done == true))
 	{
 		/* Pmod Rising edge */
 		if (HAL_GPIO_ReadPin(GPIOB, GPIO_PIN_0))
@@ -701,12 +702,10 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
 			HAL_TIM_IC_Stop_DMA(&htim1, TIM_CHANNEL_4);
 
 			/* Send buffered DDC data to PC */
-			if (UDP_LOCK == USR_UNLOCKED)
-			{
-				UDP_LOCK = USR_LOCKED;
-				USR_UDP_Send(UDP_SEND_PORT, (uint8_t *)buffers[prev_index], ((HEADER_SIZE + (BUFFER_SIZE - __HAL_DMA_GET_COUNTER(&hdma_tim1_ch4_trig_com))) * 2));
-				UDP_LOCK = USR_UNLOCKED;
-			}
+			do { HAL_GPIO_TogglePin(GPIOB, LED_Pin); } while (UDP_LOCK == USR_LOCKED);
+			UDP_LOCK = USR_LOCKED;
+			USR_UDP_Send(UDP_SEND_PORT, (uint8_t *)buffers[prev_index], ((HEADER_SIZE + (BUFFER_SIZE - __HAL_DMA_GET_COUNTER(&hdma_tim1_ch4_trig_com))) * 2));
+			UDP_LOCK = USR_UNLOCKED;
 		}
 		/* Pmod Falling edge */
 		else
@@ -737,29 +736,29 @@ void UDP_Buffer_Init()
 
 void PHY_Init()
 {
-	HAL_GPIO_WritePin(PHY_RESET_GPIO_Port, PHY_RESET_Pin, GPIO_PIN_SET);
+	//HAL_GPIO_WritePin(PHY_RESET_GPIO_Port, PHY_RESET_Pin, GPIO_PIN_SET);
 	/* Delay for PHY setup */
-	HAL_Delay(7000);
+	//HAL_Delay(3000);
 	while (PHY_Status_Check() != USR_OK)
 	{
 		HAL_GPIO_WritePin(PHY_RESET_GPIO_Port, PHY_RESET_Pin, GPIO_PIN_RESET);
-		HAL_GPIO_WritePin(GPIOB, LED_Pin, GPIO_PIN_RESET);
-		HAL_Delay(500);
 		HAL_GPIO_WritePin(GPIOB, LED_Pin, GPIO_PIN_SET);
+		HAL_Delay(100);
 		HAL_GPIO_WritePin(PHY_RESET_GPIO_Port, PHY_RESET_Pin, GPIO_PIN_SET);
-		HAL_Delay(7000);
+		HAL_GPIO_WritePin(GPIOB, LED_Pin, GPIO_PIN_RESET);
+		HAL_Delay(3000);
 	}
 }
 
 USR_StatusTypeDef PHY_Status_Check()
 {
 	uint8_t count = 0;
-	for (;count < 8; count++)
+	for (;count < 16; count++)
 	{
 		if (HAL_GPIO_ReadPin(PHY_GREEN_LED_GPIO_Port, PHY_GREEN_LED_Pin))
 		{
 			/* Pass */
-			HAL_Delay(250);
+			HAL_Delay(125);
 		}
 		else
 		{
