@@ -22,8 +22,8 @@ typedef enum
 
 typedef enum
 {
-	true  = 0x01,
-	false = 0x00
+	false = 0x00,
+	true  = 0x01
 } bool;
 
 #endif /* INC_USR_H_ */

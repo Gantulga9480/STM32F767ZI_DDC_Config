@@ -59,6 +59,7 @@ DMA_HandleTypeDef hdma_tim1_ch4_trig_com;
 struct IP4_Container udp_ip = {10, 3, 4, 28}; // 10.3.4.28:UDP_SEND_PORT
 uint8_t UDP_LOCK = USR_UNLOCKED;
 bool setup_done = false;
+GPIO_PinState pmod_state = GPIO_PIN_SET;
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -73,6 +74,7 @@ static void MX_TIM3_Init(void);
 void UDP_Buffer_Init();
 void DDC_Config_Init();
 void SW_Set(uint8_t mode);
+void Pmod_UdpHandler(uint8_t *udp_data);
 void PHY_Init();
 USR_StatusTypeDef PHY_Status_Check();
 /* USER CODE END PFP */
@@ -118,6 +120,7 @@ int main(void)
   MX_LWIP_Init();
   /* USER CODE BEGIN 2 */
   /* ---------------------------------------------------- SETUP START */
+  /* Disable Pmod sync pin (PB0) External interrupt line 0 */
   HAL_NVIC_DisableIRQ(EXTI0_IRQn);
 
   /* ---------------------------------------------------- PHY START */
@@ -610,22 +613,23 @@ static void MX_GPIO_Init(void)
 
 /* USER CODE BEGIN 4 */
 
+/* @brief DDC Initialization Function */
 void DDC_Config_Init()
 {
 	DDC_ConfigTypeDef ddc_main_conf;
-	ddc_main_conf.DDC_Mode 			= 8;
-	ddc_main_conf.NCO_Mode 			= 0;
-	ddc_main_conf.NCO_SyncMask 		= 0x00FFFFFFFF;
-	ddc_main_conf.NCO_Frequency 	= 0x0000DA740E;
-	ddc_main_conf.NCO_PhaseOffset 	= 0;
-	ddc_main_conf.CIC2_Scale 		= 0;
-	ddc_main_conf.CIC2_Decimation 	= 9;
-	ddc_main_conf.CIC5_Scale 		= 0;
-	ddc_main_conf.CIC5_Decimation 	= 9;
-	ddc_main_conf.RCF_Scale 		= 4;
-	ddc_main_conf.RCF_Decimation 	= 0;
-	ddc_main_conf.RCF_AddressOffset = 0;
-	ddc_main_conf.RCF_FilterTaps    = 0;
+	ddc_main_conf.DDC_Mode 			= MASTER_SINGLE_REAL;
+	ddc_main_conf.NCO_Mode 			= NCO_BYPASS;
+	ddc_main_conf.NCO_SyncMask 		= NCO_SYNC_MASK_DEFAULT;
+	ddc_main_conf.NCO_Frequency 	= DDC_RESERVED;
+	ddc_main_conf.NCO_PhaseOffset 	= DDC_RESERVED;
+	ddc_main_conf.CIC2_Scale 		= DDC_RESERVED;
+	ddc_main_conf.CIC2_Decimation 	= 10-1;
+	ddc_main_conf.CIC5_Scale 		= DDC_RESERVED;
+	ddc_main_conf.CIC5_Decimation 	= 10-1;
+	ddc_main_conf.RCF_Scale 		= NCO_RCF_SCALE_DEFAULT;
+	ddc_main_conf.RCF_Decimation 	= DDC_RESERVED;
+	ddc_main_conf.RCF_AddressOffset = DDC_RESERVED;
+	ddc_main_conf.RCF_FilterTaps    = DDC_RESERVED;
 	ddc_main_conf.FIR               = false;
 	USR_DDC_Init(ddc_main_conf);
 }
@@ -648,6 +652,8 @@ void USR_UDP_ReceiveCallback(struct pbuf *p, const uint32_t addr, const uint16_t
 			USR_SBUF_UdpHandler(pptr);
 		else if (pptr[0] == 'C')
 			USR_CODER_UdpHandler(pptr);
+		else if (pptr[0] == 'P')
+			Pmod_UdpHandler(pptr);
 		else if (pptr[0] == 'R')
 			/* TODO */
 			/* Send DDC configuration to PC using UDP */
@@ -658,11 +664,15 @@ void USR_UDP_ReceiveCallback(struct pbuf *p, const uint32_t addr, const uint16_t
 
 void HAL_TIM_IC_CaptureCallback(TIM_HandleTypeDef *htim)
 {
-	/* Timer1 IC DMA transfer complete callback */
+	/* Timer1 Input Capture DMA transfer complete callback */
 	if (htim->Instance == htim1.Instance)
 	{
 		/* Start another DDC to STM32 DMA transfer */
-		if (HAL_TIM_IC_Start_DMA(&htim1, TIM_CHANNEL_4, (uint32_t *)(buffers[dbuf_index] + HEADER_SIZE), 500) != HAL_OK) for (;;);
+		if (HAL_TIM_IC_Start_DMA(&htim1,
+								 TIM_CHANNEL_4,
+								 (uint32_t *)(buffers[dbuf_index] + HEADER_SIZE),
+								 500) != HAL_OK)
+			for (;;);
 
 		/* Send buffered DDC data to PC */
 		while (UDP_LOCK == USR_LOCKED) __NOP();
@@ -686,7 +696,7 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 
 void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
 {
-	/* DDC programming */
+	/* DDC ready interrupt */
 	if (GPIO_Pin == GPIO_PIN_8)
 	{
 		DDC_READY_FLAG = 1;
@@ -696,21 +706,24 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
 	if ((GPIO_Pin == GPIO_PIN_0) && (setup_done == true))
 	{
 		/* Pmod Rising edge */
-		if (HAL_GPIO_ReadPin(GPIOB, GPIO_PIN_0))
+		if (HAL_GPIO_ReadPin(GPIOB, GPIO_PIN_0) == pmod_state)
 		{
-			/* Stop IC DMA in IT mode */
+			/* Stop Input Capture DMA in Interrupt mode */
 			HAL_TIM_IC_Stop_DMA(&htim1, TIM_CHANNEL_4);
 
 			/* Send buffered DDC data to PC */
-			do { HAL_GPIO_TogglePin(GPIOB, LED_Pin); } while (UDP_LOCK == USR_LOCKED);
+			//HAL_GPIO_TogglePin(GPIOB, LED_Pin);
+			do { __NOP(); } while (UDP_LOCK == USR_LOCKED);
 			UDP_LOCK = USR_LOCKED;
-			USR_UDP_Send(UDP_SEND_PORT, (uint8_t *)buffers[prev_index], ((HEADER_SIZE + (BUFFER_SIZE - __HAL_DMA_GET_COUNTER(&hdma_tim1_ch4_trig_com))) * 2));
+			USR_UDP_Send(UDP_SEND_PORT,
+						 (uint8_t *)buffers[prev_index],
+						 ((HEADER_SIZE + (BUFFER_SIZE - __HAL_DMA_GET_COUNTER(&hdma_tim1_ch4_trig_com))) * 2));
 			UDP_LOCK = USR_UNLOCKED;
 		}
 		/* Pmod Falling edge */
 		else
 		{
-			/* Start IC DMA DDC to STM32 transfer */
+			/* Start DDC to STM32 Input Capture DMA transfer */
 			HAL_TIM_IC_Start_DMA(&htim1, TIM_CHANNEL_4, (uint32_t *)(buffers[0] + HEADER_SIZE), BUFFER_SIZE);
 			dbuf_index = 1; prev_index = 0;
 		}
@@ -734,22 +747,27 @@ void UDP_Buffer_Init()
 	}
 }
 
+/* @brief Resets PHY chip if necessary */
 void PHY_Init()
 {
-	//HAL_GPIO_WritePin(PHY_RESET_GPIO_Port, PHY_RESET_Pin, GPIO_PIN_SET);
-	/* Delay for PHY setup */
-	//HAL_Delay(3000);
 	while (PHY_Status_Check() != USR_OK)
 	{
+		/* Reset PHY by reseting PHY RESET pin*/
 		HAL_GPIO_WritePin(PHY_RESET_GPIO_Port, PHY_RESET_Pin, GPIO_PIN_RESET);
 		HAL_GPIO_WritePin(GPIOB, LED_Pin, GPIO_PIN_SET);
+		/* Held low for 100ms */
 		HAL_Delay(100);
+		/* Release PHY RESET pin by setting the pin */
 		HAL_GPIO_WritePin(PHY_RESET_GPIO_Port, PHY_RESET_Pin, GPIO_PIN_SET);
 		HAL_GPIO_WritePin(GPIOB, LED_Pin, GPIO_PIN_RESET);
+		/* Wait for PHY to start */
 		HAL_Delay(3000);
 	}
 }
 
+/* @brief Checks PHY status by checking PHY Green LED state for 2 seconds
+ * @brief Samples PHY Green LED Pin 8 times per second
+ * @brief If Low detected return error */
 USR_StatusTypeDef PHY_Status_Check()
 {
 	uint8_t count = 0;
@@ -757,17 +775,21 @@ USR_StatusTypeDef PHY_Status_Check()
 	{
 		if (HAL_GPIO_ReadPin(PHY_GREEN_LED_GPIO_Port, PHY_GREEN_LED_Pin))
 		{
-			/* Pass */
+			/* Pass if green LED high*/
 			HAL_Delay(125);
 		}
 		else
 		{
+			/* Otherwise return error */
 			return USR_ERR;
 		}
 	}
+	/* PHY status normal */
 	return USR_OK;
 }
 
+/* @brief Configures external signal switch mode
+ * @brief Enable/Disable external 10.7MHz OSC */
 void SW_Set(uint8_t mode)
 {
 	if (mode == SW_INT)
@@ -784,6 +806,13 @@ void SW_Set(uint8_t mode)
 	}
 }
 
+void Pmod_UdpHandler(uint8_t *udp_data)
+{
+	if (udp_data[1] == '1')
+		pmod_state = GPIO_PIN_SET;
+	else
+		pmod_state = GPIO_PIN_RESET;
+}
 /* USER CODE END 4 */
 
 /**

@@ -8,11 +8,27 @@
 #ifndef INC_DDC_H_
 #define INC_DDC_H_
 
-#define MAX_RCF_RAM_SIZE 256
-#define RCF_SIZE         100
+#define DDC_RESERVED            0x00
+#define DDC_SOFT_RESET          0x01
 
-#define DDC_SOFT_RESET 0x01
-#define DDC_RESERVED   0x00
+#define MAX_RCF_RAM_SIZE        256
+#define RCF_SIZE                100
+
+#define SLAVE_SINGLE_REAL       0x00
+#define SLAVE_DIVERSE_REAL      0x02
+#define SLAVE_SINGLE_COMPLEX    0x04
+#define MASTER_SINGLE_REAL      0x08
+#define MASTER_DIVERSE_REAL     0x0A
+#define MASTER_SINGLE_COMPLEX   0x0C
+
+#define NCO_ACTIVE              0x00
+#define NCO_BYPASS              0x01
+#define NCO_ACTIVE_PD 			0x02
+#define NCO_ACTIVE_AD           0x04
+#define NCO_ACTIVE_PAD 			0x06
+
+#define NCO_SYNC_MASK_DEFAULT   0x00FFFFFFFF
+#define NCO_RCF_SCALE_DEFAULT   0x04
 
 #define DDC_MODE  				0x300
 #define DDC_NCO_MODE 			0x301
@@ -46,8 +62,9 @@
  * 10k       -  - NCO
 */
 
-/* ATTENTION!!! */
-/* RUN -> RESET -> DEBUG */
+/* ATTENTION!!!
+ * when using FIR
+ * UPLOAD -> POWER RESET -> RUN */
 
 typedef struct
 {
