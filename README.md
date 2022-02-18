@@ -3,6 +3,10 @@ LWIP -> udp.c 760
         always true
     if (pbuf_add_header(p, UDP_HLEN)) -> if (1)
 
+    LWIP -> udp.c 760
+        reverted on 2/18/2022
+        if (1) -> if (pbuf_add_header(p, UDP_HLEN))
+
 HAL -> stm32f7xx_hal_eth.c -> 895
     added
         UDP loss dicreased almost 100%

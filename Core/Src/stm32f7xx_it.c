@@ -52,10 +52,7 @@
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
 extern uint8_t code_index;
-extern uint8_t coder_delay;
-extern uint8_t coder_delay_val;
-extern uint16_t code[6];
-extern uint16_t delay[6];
+extern uint16_t *CODE;
 /* USER CODE END 0 */
 
 /* External variables --------------------------------------------------------*/
@@ -241,7 +238,7 @@ void TIM2_IRQHandler(void)
   /* USR_ADDED */
   __HAL_TIM_CLEAR_IT(&htim2, TIM_IT_UPDATE);
 
-  GPIOF->ODR = code[code_index];
+  CODER_PORT->ODR = CODE[code_index];
   code_index++;
   if (code_index == 13) HAL_TIM_Base_Stop_IT(&htim2);
 
