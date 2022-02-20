@@ -161,8 +161,8 @@ int main(void)
 
   /* Setup Done */
 
-  //htim1.hdma[TIM_DMA_ID_CC4]->Instance->PAR = (uint32_t)&GPIOD->IDR;
-  //htim1.hdma[TIM_DMA_ID_CC4]->Instance->NDTR = BUFFER_SIZE;
+  htim1.hdma[TIM_DMA_ID_CC4]->Instance->PAR = (uint32_t)&GPIOD->IDR;
+  // htim1.hdma[TIM_DMA_ID_CC4]->Instance->NDTR = BUFFER_SIZE;
 
   HAL_GPIO_WritePin(GPIOB, LED_Pin, GPIO_PIN_SET);
   setup_done = true;

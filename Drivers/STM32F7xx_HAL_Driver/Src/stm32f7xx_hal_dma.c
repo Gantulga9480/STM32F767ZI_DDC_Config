@@ -455,16 +455,16 @@ HAL_StatusTypeDef HAL_DMA_Start_IT(DMA_HandleTypeDef *hdma, uint32_t SrcAddress,
   HAL_StatusTypeDef status = HAL_OK;
 
   /* calculate DMA base and stream number */
-  DMA_Base_Registers *regs = (DMA_Base_Registers *)hdma->StreamBaseAddress;
+  //DMA_Base_Registers *regs = (DMA_Base_Registers *)hdma->StreamBaseAddress;
   
   /* Check the parameters */
-  assert_param(IS_DMA_BUFFER_SIZE(DataLength));
+  //assert_param(IS_DMA_BUFFER_SIZE(DataLength));
 
   /* Process locked USR_ADDED */
-  __HAL_UNLOCK(hdma);
+  //__HAL_UNLOCK(hdma);
  
   /* Process locked */
-  __HAL_LOCK(hdma);
+  //__HAL_LOCK(hdma);
 
   /* USR_ADDED */
   if (hdma->State == HAL_DMA_STATE_ABORT) hdma->State = HAL_DMA_STATE_READY;
@@ -475,34 +475,28 @@ HAL_StatusTypeDef HAL_DMA_Start_IT(DMA_HandleTypeDef *hdma, uint32_t SrcAddress,
     hdma->State = HAL_DMA_STATE_BUSY;
     
     /* Initialize the error code */
-    hdma->ErrorCode = HAL_DMA_ERROR_NONE;
+    //hdma->ErrorCode = HAL_DMA_ERROR_NONE;
     
     /* Configure the source, destination address and the data length */
     DMA_SetConfig(hdma, SrcAddress, DstAddress, DataLength);
     
     /* Clear all interrupt flags at correct offset within the register */
-    regs->IFCR = 0x3FU << hdma->StreamIndex;
+    //regs->IFCR = 0x3FU << hdma->StreamIndex;
     
     /* Enable Common interrupts*/
-    hdma->Instance->CR  |= DMA_IT_TC | DMA_IT_TE | DMA_IT_DME;
-    hdma->Instance->FCR |= DMA_IT_FE;
-    
-    if(hdma->XferHalfCpltCallback != NULL)
-    {
-      hdma->Instance->CR  |= DMA_IT_HT;
-    }
+    hdma->Instance->CR  |= DMA_IT_TC;
     
     /* Enable the Peripheral */
     __HAL_DMA_ENABLE(hdma);
   }
-  else
-  {
+  //else
+  //{
     /* Process unlocked */
-    __HAL_UNLOCK(hdma);	  
+    //__HAL_UNLOCK(hdma);
     
     /* Return error status */
-    status = HAL_BUSY;
-  }
+    //status = HAL_BUSY;
+  //}
   
   return status;
 }
@@ -1164,23 +1158,23 @@ static void DMA_SetConfig(DMA_HandleTypeDef *hdma, uint32_t SrcAddress, uint32_t
   hdma->Instance->NDTR = DataLength;
 
   /* Memory to Peripheral */
-  if((hdma->Init.Direction) == DMA_MEMORY_TO_PERIPH)
-  {
+  //if((hdma->Init.Direction) == DMA_MEMORY_TO_PERIPH)
+  //{
     /* Configure DMA Stream destination address */
-    hdma->Instance->PAR = DstAddress;
+    //hdma->Instance->PAR = DstAddress;
 
     /* Configure DMA Stream source address */
-    hdma->Instance->M0AR = SrcAddress;
-  }
+    //hdma->Instance->M0AR = SrcAddress;
+  //}
   /* Peripheral to Memory */
-  else
-  {
+  //else
+  //{
     /* Configure DMA Stream source address */
-    hdma->Instance->PAR = SrcAddress;
+    //hdma->Instance->PAR = SrcAddress;
 
     /* Configure DMA Stream destination address */
     hdma->Instance->M0AR = DstAddress;
-  }
+  //}
 }
 
 /**
