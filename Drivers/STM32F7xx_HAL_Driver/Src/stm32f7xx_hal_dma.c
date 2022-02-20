@@ -596,7 +596,7 @@ HAL_StatusTypeDef HAL_DMA_Abort_IT(DMA_HandleTypeDef *hdma)
   else
   {
     /* Set Abort State  */
-    hdma->State = HAL_DMA_STATE_ABORT;
+    hdma->State = HAL_DMA_STATE_READY;
     
     /* Disable the stream */
     __HAL_DMA_DISABLE(hdma);
