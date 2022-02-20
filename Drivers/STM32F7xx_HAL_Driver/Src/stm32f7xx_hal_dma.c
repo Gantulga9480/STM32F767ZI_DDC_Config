@@ -467,10 +467,10 @@ HAL_StatusTypeDef HAL_DMA_Start_IT(DMA_HandleTypeDef *hdma, uint32_t SrcAddress,
   //__HAL_LOCK(hdma);
 
   /* USR_ADDED */
-  if (hdma->State == HAL_DMA_STATE_ABORT) hdma->State = HAL_DMA_STATE_READY;
+  hdma->State = HAL_DMA_STATE_READY;
   
-  if(HAL_DMA_STATE_READY == hdma->State)
-  {
+  //if(HAL_DMA_STATE_READY == hdma->State)
+  //{
     /* Change DMA peripheral state */
     hdma->State = HAL_DMA_STATE_BUSY;
     
@@ -478,17 +478,18 @@ HAL_StatusTypeDef HAL_DMA_Start_IT(DMA_HandleTypeDef *hdma, uint32_t SrcAddress,
     //hdma->ErrorCode = HAL_DMA_ERROR_NONE;
     
     /* Configure the source, destination address and the data length */
-    DMA_SetConfig(hdma, SrcAddress, DstAddress, DataLength);
+    // DMA_SetConfig(hdma, SrcAddress, DstAddress, DataLength);
     
     /* Clear all interrupt flags at correct offset within the register */
     //regs->IFCR = 0x3FU << hdma->StreamIndex;
     
     /* Enable Common interrupts*/
+    hdma->Instance->M0AR = DstAddress;
     hdma->Instance->CR  |= DMA_IT_TC;
     
     /* Enable the Peripheral */
     __HAL_DMA_ENABLE(hdma);
-  }
+  //}
   //else
   //{
     /* Process unlocked */
@@ -1152,10 +1153,10 @@ uint32_t HAL_DMA_GetError(DMA_HandleTypeDef *hdma)
 static void DMA_SetConfig(DMA_HandleTypeDef *hdma, uint32_t SrcAddress, uint32_t DstAddress, uint32_t DataLength)
 {
   /* Clear DBM bit */
-  hdma->Instance->CR &= (uint32_t)(~DMA_SxCR_DBM);
+  // hdma->Instance->CR &= (uint32_t)(~DMA_SxCR_DBM);
 
   /* Configure DMA Stream data length */
-  hdma->Instance->NDTR = DataLength;
+  // hdma->Instance->NDTR = DataLength;
 
   /* Memory to Peripheral */
   //if((hdma->Init.Direction) == DMA_MEMORY_TO_PERIPH)
@@ -1173,7 +1174,7 @@ static void DMA_SetConfig(DMA_HandleTypeDef *hdma, uint32_t SrcAddress, uint32_t
     //hdma->Instance->PAR = SrcAddress;
 
     /* Configure DMA Stream destination address */
-    hdma->Instance->M0AR = DstAddress;
+	hdma->Instance->M0AR = DstAddress;
   //}
 }
 
