@@ -160,6 +160,10 @@ int main(void)
   /* ---------------------------------------------------- SBUF END */
 
   /* Setup Done */
+
+  htim1.hdma[TIM_DMA_ID_CC4]->Instance->PAR = (uint32_t)&GPIOD->IDR;
+  htim1.hdma[TIM_DMA_ID_CC4]->Instance->NDTR = BUFFER_SIZE;
+
   HAL_GPIO_WritePin(GPIOB, LED_Pin, GPIO_PIN_SET);
   setup_done = true;
   HAL_NVIC_EnableIRQ(EXTI0_IRQn);
@@ -618,13 +622,13 @@ void DDC_Config_Init()
 {
 	DDC_ConfigTypeDef ddc_main_conf;
 	ddc_main_conf.DDC_Mode 			= MASTER_SINGLE_REAL;
-	ddc_main_conf.NCO_Mode 			= NCO_BYPASS;
+	ddc_main_conf.NCO_Mode 			= NCO_ACTIVE;
 	ddc_main_conf.NCO_SyncMask 		= NCO_SYNC_MASK_DEFAULT;
-	ddc_main_conf.NCO_Frequency 	= DDC_RESERVED;
+	ddc_main_conf.NCO_Frequency 	= 1517555111;
 	ddc_main_conf.NCO_PhaseOffset 	= DDC_RESERVED;
-	ddc_main_conf.CIC2_Scale 		= DDC_RESERVED;
+	ddc_main_conf.CIC2_Scale 		= 6;
 	ddc_main_conf.CIC2_Decimation 	= 10-1;
-	ddc_main_conf.CIC5_Scale 		= DDC_RESERVED;
+	ddc_main_conf.CIC5_Scale 		= 5;
 	ddc_main_conf.CIC5_Decimation 	= 10-1;
 	ddc_main_conf.RCF_Scale 		= NCO_RCF_SCALE_DEFAULT;
 	ddc_main_conf.RCF_Decimation 	= DDC_RESERVED;

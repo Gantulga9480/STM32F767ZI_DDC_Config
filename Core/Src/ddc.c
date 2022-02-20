@@ -19,7 +19,7 @@ void USR_DDC_Init(DDC_ConfigTypeDef conf)
 	hardReset();                                               // Hard reset
 	if (conf.FIR) write_rcf_ram();                             // Write FIR rams if using
 	//else flush_RCF_ram();
-	flush_iq_ram();											   // Flush remaining I and Q data in DDC rams
+	//flush_iq_ram();										   // Flush remaining I and Q data in DDC rams
 	write_ddc(DDC_MODE,               DDC_SOFT_RESET);         // Soft reset
 	write_ddc(DDC_NCO_MODE,           conf.NCO_Mode);          // NCO active, Phase-Amplitude Dither
 	write_ddc(DDC_NCO_SYNC_MASK,      0x00FFFFFFFF);           // NCO Sync mask
