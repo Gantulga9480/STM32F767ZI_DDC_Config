@@ -22,14 +22,14 @@
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
-#include "defs.h"
-#include "vars.h"
 #include "udp_server.h"
+#include "usr.h"
 #include "sbuf.h"
 #include "ddc.h"
 #include "dac.h"
 #include "coder.h"
-#include "usr.h"
+#include "defs.h"
+#include "vars.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -148,7 +148,7 @@ int main(void)
   /* ---------------------------------------------------- DDC END */
 
   /* ---------------------------------------------------- CODER START */
-  HAL_TIM_Base_Start_IT(&htim3);
+  // HAL_TIM_Base_Start_IT(&htim3);
   /* ---------------------------------------------------- CODER END   */
 
   /* ---------------------------------------------------- DAC START */
@@ -662,6 +662,9 @@ void USR_UDP_ReceiveCallback(struct pbuf *p, const uint32_t addr, const uint16_t
 	}
 }
 
+/* @brief Timer DMA Input Capture mode callback */
+/* @brief Start another DMA transfer in Input Capture mode */
+/* @brief Send filled buffer */
 void HAL_TIM_IC_CaptureCallback(TIM_HandleTypeDef *htim)
 {
 	/* Timer1 Input Capture DMA transfer complete callback */
@@ -671,7 +674,7 @@ void HAL_TIM_IC_CaptureCallback(TIM_HandleTypeDef *htim)
 		if (HAL_TIM_IC_Start_DMA(&htim1,
 								 TIM_CHANNEL_4,
 								 (uint32_t *)(buffers[dbuf_index] + HEADER_SIZE),
-								 500) != HAL_OK)
+								 BUFFER_SIZE) != HAL_OK)
 			for (;;);
 
 		/* Send buffered DDC data to PC */
@@ -680,17 +683,6 @@ void HAL_TIM_IC_CaptureCallback(TIM_HandleTypeDef *htim)
 		USR_UDP_Send(UDP_SEND_PORT, (uint8_t *)buffers[prev_index], PACKET_SIZE);
 		prev_index = dbuf_index; dbuf_index++; if (dbuf_index == BUFFER_COUNT) dbuf_index = 0;
 		UDP_LOCK = USR_UNLOCKED;
-	}
-}
-
-void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
-{
-	/* Coder 110ms timer interrupt */
-	if (htim->Instance == htim3.Instance)
-	{
-		code_index = 0;
-		/* Start coder small delay timer */
-		HAL_TIM_Base_Start_IT(&htim2);
 	}
 }
 
@@ -712,7 +704,6 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
 			HAL_TIM_IC_Stop_DMA(&htim1, TIM_CHANNEL_4);
 
 			/* Send buffered DDC data to PC */
-			//HAL_GPIO_TogglePin(GPIOB, LED_Pin);
 			do { __NOP(); } while (UDP_LOCK == USR_LOCKED);
 			UDP_LOCK = USR_LOCKED;
 			USR_UDP_Send(UDP_SEND_PORT,
