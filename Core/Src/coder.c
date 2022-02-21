@@ -8,6 +8,8 @@
 #include "main.h"
 #include "coder.h"
 
+uint8_t get_value_coder(uint8_t *udp_data);
+
 extern TIM_HandleTypeDef htim2;
 extern TIM_HandleTypeDef htim3;
 
@@ -210,9 +212,20 @@ uint16_t CHANNELS_FREQ_START[2] = {CH1_F_START, CH2_F_START};
 uint16_t *CHANNELS_FREQ[42] = {CH1_F_150_2, CH1_F_151_2, CH1_F_152_2, CH1_F_153_2, CH1_F_154_2, CH1_F_155_2, CH1_F_156_2, CH1_F_157_2, CH1_F_158_2, CH1_F_159_2, CH1_F_160_2, CH1_F_161_2, CH1_F_162_2, CH1_F_163_2, CH1_F_164_2, CH1_F_165_2, CH1_F_166_2, CH1_F_167_2, CH1_F_168_2, CH1_F_169_2, CH1_F_170_2, CH2_F_150_2, CH2_F_151_2, CH2_F_152_2, CH2_F_153_2, CH2_F_154_2, CH2_F_155_2, CH2_F_156_2, CH2_F_157_2, CH2_F_158_2, CH2_F_159_2, CH2_F_160_2, CH2_F_161_2, CH2_F_162_2, CH2_F_163_2, CH2_F_164_2, CH2_F_165_2, CH2_F_166_2, CH2_F_167_2, CH2_F_168_2, CH2_F_169_2, CH2_F_170_2};
 uint16_t CHANNELS_FREQ_DELAY[42] = {CH1_F_150_2_D, CH1_F_151_2_D, CH1_F_152_2_D, CH1_F_153_2_D, CH1_F_154_2_D, CH1_F_155_2_D, CH1_F_156_2_D, CH1_F_157_2_D, CH1_F_158_2_D, CH1_F_159_2_D, CH1_F_160_2_D, CH1_F_161_2_D, CH1_F_162_2_D, CH1_F_163_2_D, CH1_F_164_2_D, CH1_F_165_2_D, CH1_F_166_2_D, CH1_F_167_2_D, CH1_F_168_2_D, CH1_F_169_2_D, CH1_F_170_2_D, CH2_F_150_2_D, CH2_F_151_2_D, CH2_F_152_2_D, CH2_F_153_2_D, CH2_F_154_2_D, CH2_F_155_2_D, CH2_F_156_2_D, CH2_F_157_2_D, CH2_F_158_2_D, CH2_F_159_2_D, CH2_F_160_2_D, CH2_F_161_2_D, CH2_F_162_2_D, CH2_F_163_2_D, CH2_F_164_2_D, CH2_F_165_2_D, CH2_F_166_2_D, CH2_F_167_2_D, CH2_F_168_2_D, CH2_F_169_2_D, CH2_F_170_2_D};
 
-uint8_t code_index = 0;
+uint16_t test_code[6] = {1, 0, 1, 0, 1, 0};
+uint8_t test_code_len = 6;
+
+uint16_t value_93 = 0;
+uint16_t value_94 = 0;
+uint16_t COUNTER_93[6] = {861, 605, 861, 0, 0, 0};
+uint16_t COUNTER_94[6] = {862, 606, 862, 0, 0, 0};
+uint16_t counter_len = 6;
+
+uint16_t code_index = 0;
 uint16_t *CODE;
 uint16_t CODE_LEN = 0;
+
+uint8_t TIM_LOCK = 0;
 
 void USR_CODER_Start()
 {
@@ -221,6 +234,7 @@ void USR_CODER_Start()
 	USR_CODER_Long(START_3, START_3_D);
 	USR_CODER_Short(START_4, START_4_D);
 	USR_CODER_Long(START_5, START_5_D);
+	HAL_TIM_Base_Start_IT(&htim3);
 }
 
 void USR_CODER_PowerOn()
@@ -264,18 +278,36 @@ void USR_CODER_Short(uint16_t *code, uint16_t length)
 	CODE_LEN = length;
 	CODE = code;
 	code_index = 0;
+	TIM_LOCK = 1;
 	HAL_TIM_Base_Start_IT(&htim2);
 }
 
 void USR_CODER_Long(uint16_t code, uint16_t delay)
 {
+	HAL_NVIC_DisableIRQ(TIM3_IRQn);
 	CODER_PORT->ODR = code;
 	HAL_Delay(delay);
+	HAL_NVIC_EnableIRQ(TIM3_IRQn);
 }
 
 void USR_CODER_UdpHandler(uint8_t *udp_data)
 {
-	__NOP();
+	if (udp_data[1] == 'P') USR_CODER_PowerOn();
+	else if (udp_data[1] == 'p') USR_CODER_PowerOff();
+	else if (udp_data[1] == 'S') USR_CODER_Start();
+	else if (udp_data[1] == 'T') USR_CODER_TriggerOn();
+	else if (udp_data[1] == 't') USR_CODER_TriggerOff();
+	else if (udp_data[1] == 'C')
+	{
+		uint8_t val = get_value_coder(udp_data);
+		USR_CODER_ChannelCode(val);
+	}
+	else if (udp_data[1] == 'F')
+	{
+		uint8_t val = get_value_coder(udp_data);
+		uint8_t ch = udp_data[2] - '0';
+		USR_CODER_ChannelFreq(ch, val);
+	}
 }
 
 void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
@@ -283,8 +315,30 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 	/* Coder 110ms timer interrupt */
 	if (htim->Instance == htim3.Instance)
 	{
-		code_index = 0;
-		/* Start coder small delay timer */
-		HAL_TIM_Base_Start_IT(&htim2);
+		HAL_GPIO_TogglePin(GPIOB, LED_Pin);
+		COUNTER_93[3] = (0b1100000000 | value_93);
+		COUNTER_93[4] = (0b1000000000 | value_93);
+		COUNTER_93[5] = (0b1100000000 | value_93);
+		USR_CODER_Short(COUNTER_93, counter_len);
+		if (value_93 == 7)
+		{
+			COUNTER_94[3] = (0b1100000000 | value_94);
+			COUNTER_94[4] = (0b1000000000 | value_94);
+			COUNTER_94[5] = (0b1100000000 | value_94);
+			USR_CODER_Short(COUNTER_94, counter_len);
+			if (value_94 == 1) value_94 = 0;
+			else value_94 = 1;
+		}
+		if (value_93 == 15) value_93 = 0;
+		else value_93++;
 	}
+}
+
+uint8_t get_value_coder(uint8_t *udp_data)
+{
+	uint8_t val = 0;
+	val += (udp_data[3] - '0')*100;
+	val += (udp_data[4] - '0')*10;
+	val += (udp_data[5] - '0');
+	return val;
 }

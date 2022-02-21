@@ -51,9 +51,10 @@
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
-extern uint8_t code_index;
+extern uint16_t code_index;
 extern uint16_t *CODE;
 extern uint16_t CODE_LEN;
+extern uint8_t TIM_LOCK;
 /* USER CODE END 0 */
 
 /* External variables --------------------------------------------------------*/
@@ -241,7 +242,11 @@ void TIM2_IRQHandler(void)
 
   CODER_PORT->ODR = CODE[code_index];
   code_index++;
-  if (code_index == CODE_LEN) HAL_TIM_Base_Stop_IT(&htim2);
+  if (code_index == CODE_LEN)
+  {
+	  HAL_TIM_Base_Stop_IT(&htim2);
+	  TIM_LOCK = 0;
+  }
 
   /* USR_REMOVED HAL_TIM_IRQHandler(&htim2) */
   /* USER CODE END TIM2_IRQn 0 */
