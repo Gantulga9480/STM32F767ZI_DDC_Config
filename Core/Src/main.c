@@ -27,7 +27,7 @@
 #include "sbuf.h"
 #include "ddc.h"
 #include "dac.h"
-#include "coder.h"
+// #include "coder.h"
 #include "defs.h"
 #include "vars.h"
 /* USER CODE END Includes */
@@ -59,9 +59,6 @@ DMA_HandleTypeDef hdma_tim1_ch4_trig_com;
 struct IP4_Container udp_ip = {10, 3, 4, 28}; // 10.3.4.28:UDP_SEND_PORT
 USR_LockTypeDef UDP_LOCK = USR_UNLOCKED;
 bool setup_done = false;
-extern bool is_power_on;
-extern bool is_started;
-extern bool is_triggered;
 GPIO_PinState pmod_state = GPIO_PIN_SET;
 /* USER CODE END PV */
 
@@ -140,7 +137,7 @@ int main(void)
    * SW_INT for internal OSC
    * SW_EXT for external OSC
    * */
-  SW_Set(SW_EXT);
+  SW_Set(SW_INT);
 
   /* ADC, DDC Clock 30MHz */
   HAL_TIM_Base_Start(&htim8);
@@ -159,8 +156,8 @@ int main(void)
   /* ---------------------------------------------------- SBUF END */
 
   /* Configure DMA registers */
-  htim1.hdma[TIM_DMA_ID_CC4]->Instance->PAR = (uint32_t)&GPIOD->IDR;
-  htim1.hdma[TIM_DMA_ID_CC4]->Instance->NDTR = BUFFER_SIZE;
+  //htim1.hdma[TIM_DMA_ID_CC4]->Instance->PAR = (uint32_t)&GPIOD->IDR;
+  //htim1.hdma[TIM_DMA_ID_CC4]->Instance->NDTR = BUFFER_SIZE;
 
   HAL_GPIO_WritePin(GPIOB, LED_Pin, GPIO_PIN_SET);
   setup_done = true;
@@ -246,7 +243,7 @@ static void MX_TIM1_Init(void)
   htim1.Instance = TIM1;
   htim1.Init.Prescaler = 0;
   htim1.Init.CounterMode = TIM_COUNTERMODE_UP;
-  htim1.Init.Period = 65000;
+  htim1.Init.Period = 0;
   htim1.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
   htim1.Init.RepetitionCounter = 0;
   htim1.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
@@ -648,8 +645,8 @@ void USR_UDP_ReceiveCallback(struct pbuf *p, const uint32_t addr, const uint16_t
 		else if (pptr[0] == 'A') USR_DDC_UdpHandler(pptr);
 		else if (pptr[0] == 'D') USR_DAC_UdpHandler(pptr);
 		else if (pptr[0] == 'S') USR_SBUF_UdpHandler(pptr);
-		else if (pptr[0] == 'C') USR_CODER_UdpHandler(pptr);
-		else if (pptr[0] == 'c') USR_CODER_StateSend();
+		//else if (pptr[0] == 'C') USR_CODER_UdpHandler(pptr);
+		//else if (pptr[0] == 'c') USR_CODER_StateSend();
 		else if (pptr[0] == 'P') Pmod_UdpHandler(pptr);
 		else if (pptr[0] == 'R')
 			/* TODO */
@@ -797,10 +794,10 @@ void SW_Set(uint8_t mode)
 /* @brief Coder UDP responder */
 void USR_CODER_StateSend()
 {
-	USR_UDP_InsertPostDataCh('c', 0);
-	USR_UDP_InsertPostDataCh(((char)is_power_on + '0'), 1);
-	USR_UDP_InsertPostDataCh(((char)is_started + '0'), 2);
-	USR_UDP_InsertPostDataCh(((char)is_triggered + '0'), 3);
+	//USR_UDP_InsertPostDataCh('c', 0);
+	//USR_UDP_InsertPostDataCh(((char)is_power_on + '0'), 1);
+	//USR_UDP_InsertPostDataCh(((char)is_started + '0'), 2);
+	//USR_UDP_InsertPostDataCh(((char)is_triggered + '0'), 3);
 }
 
 void Pmod_UdpHandler(uint8_t *udp_data)

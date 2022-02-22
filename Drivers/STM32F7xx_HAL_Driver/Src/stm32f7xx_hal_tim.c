@@ -2416,13 +2416,17 @@ HAL_StatusTypeDef HAL_TIM_IC_Start_DMA(TIM_HandleTypeDef *htim, uint32_t Channel
     {
       /* Set the DMA capture callbacks */
       htim->hdma[TIM_DMA_ID_CC4]->XferCpltCallback = TIM_DMACaptureCplt;
-      htim->hdma[TIM_DMA_ID_CC4]->State = 1; // Ready
-      htim->hdma[TIM_DMA_ID_CC4]->State = 2; // Busy
-      htim->hdma[TIM_DMA_ID_CC4]->Instance->NDTR = Length;
-      htim->hdma[TIM_DMA_ID_CC4]->Instance->M0AR = (uint32_t)pData;
-      htim->hdma[TIM_DMA_ID_CC4]->Instance->CR |= (0x1UL << 4U);
-      htim->hdma[TIM_DMA_ID_CC4]->Instance->CR |= (0x1UL);
+      htim->hdma[TIM_DMA_ID_CC4]->XferHalfCpltCallback = TIM_DMACaptureHalfCplt;
+
+      /* Set the DMA error callback */
+      htim->hdma[TIM_DMA_ID_CC4]->XferErrorCallback = TIM_DMAError ;
+
       /* Enable the DMA stream */
+      if (HAL_DMA_Start_IT(htim->hdma[TIM_DMA_ID_CC4], (uint32_t)&GPIOD->IDR, (uint32_t)pData, Length) != HAL_OK)
+      {
+        /* Return error status */
+        return HAL_ERROR;
+      }
       /* Enable the TIM Capture/Compare 4  DMA request */
       __HAL_TIM_ENABLE_DMA(htim, TIM_DMA_CC4);
       break;
