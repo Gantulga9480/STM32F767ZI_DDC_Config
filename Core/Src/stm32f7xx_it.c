@@ -51,10 +51,9 @@
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
-extern uint16_t code_index;
-extern uint16_t *CODE;
-extern uint16_t CODE_LEN;
-extern uint8_t TIM_LOCK;
+uint16_t code_index = 0;
+uint16_t *CODE_DATA = 0;
+uint16_t CODE_LEN = 0;
 /* USER CODE END 0 */
 
 /* External variables --------------------------------------------------------*/
@@ -240,13 +239,9 @@ void TIM2_IRQHandler(void)
   /* USR_ADDED */
   __HAL_TIM_CLEAR_IT(&htim2, TIM_IT_UPDATE);
 
-  CODER_PORT->ODR = CODE[code_index];
+  CODER_PORT->ODR = CODE_DATA[code_index];
   code_index++;
-  if (code_index == CODE_LEN)
-  {
-	  HAL_TIM_Base_Stop_IT(&htim2);
-	  TIM_LOCK = 0;
-  }
+  if (code_index == CODE_LEN) HAL_TIM_Base_Stop_IT(&htim2);
 
   /* USR_REMOVED HAL_TIM_IRQHandler(&htim2) */
   /* USER CODE END TIM2_IRQn 0 */
@@ -262,9 +257,13 @@ void TIM2_IRQHandler(void)
 void TIM3_IRQHandler(void)
 {
   /* USER CODE BEGIN TIM3_IRQn 0 */
+  /* USR_ADDED */
+  __HAL_TIM_CLEAR_IT(&htim3, TIM_IT_UPDATE);
 
+  HAL_TIM_PeriodElapsedCallback(&htim3);
+  /* USR_REMOVED HAL_TIM_IRQHandler(&htim3) */
   /* USER CODE END TIM3_IRQn 0 */
-  HAL_TIM_IRQHandler(&htim3);
+  // HAL_TIM_IRQHandler(&htim3);
   /* USER CODE BEGIN TIM3_IRQn 1 */
 
   /* USER CODE END TIM3_IRQn 1 */

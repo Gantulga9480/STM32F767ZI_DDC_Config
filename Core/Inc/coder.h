@@ -87,7 +87,8 @@ void USR_CODER_TriggerOff();
 void USR_CODER_ChannelCode(uint8_t index);
 void USR_CODER_ChannelFreq(uint8_t channel, uint8_t index);
 void USR_CODER_Long(uint16_t code, uint16_t delay);
-void USR_CODER_Short(uint16_t *code, uint16_t length);
+void USR_CODER_Short(const uint16_t *code, uint16_t length);
 void USR_CODER_UdpHandler(uint8_t *udp_data);
+void USR_CODER_StateSend();
 
 #endif /* INC_CODER_H_ */

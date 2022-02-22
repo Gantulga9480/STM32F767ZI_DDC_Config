@@ -16,10 +16,6 @@ char post_data_buffer[POST_DATA_BUFFER_SIZE];
 uint16_t post_data_size = 0;
 #endif
 
-uint8_t is_con = 0;
-
-/* Private functions ---------------------------------------------------------*/
-
 /**
   * @brief  Initialize the server application.
   * @param  ip4 IP4 address of client computer
@@ -77,9 +73,6 @@ void USR_UDP_Init(struct IP4_Container ip4, uint16_t sendPort, uint16_t receiveP
 			udp_remove(recv_upcb);
 		}
 	}
-	//udp_connect(&my_upcb, &my_addr, sendPort);  // 10Mbps
-	//udp_connect(&my_upcb, &my_addr, sendPort);  // 20Mbps
-	//udp_connect(&my_upcb, &my_addr, sendPort);  // 30Mbps
 }
 
 USR_StatusTypeDef USR_UDP_Send(uint16_t udp_send_port, uint8_t *buff, uint16_t len)
@@ -191,6 +184,7 @@ USR_StatusTypeDef USR_UDP_InsertPostDataCh(char data, uint16_t index)
 	if (index >= POST_DATA_BUFFER_SIZE)
 		return USR_ERR;
 	post_data_buffer[index] = data;
+	post_data_size++;
 	return USR_OK;
 }
 

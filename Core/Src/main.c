@@ -57,8 +57,11 @@ DMA_HandleTypeDef hdma_tim1_ch4_trig_com;
 
 /* USER CODE BEGIN PV */
 struct IP4_Container udp_ip = {10, 3, 4, 28}; // 10.3.4.28:UDP_SEND_PORT
-uint8_t UDP_LOCK = USR_UNLOCKED;
+USR_LockTypeDef UDP_LOCK = USR_UNLOCKED;
 bool setup_done = false;
+extern bool is_power_on;
+extern bool is_started;
+extern bool is_triggered;
 GPIO_PinState pmod_state = GPIO_PIN_SET;
 /* USER CODE END PV */
 
@@ -147,10 +150,6 @@ int main(void)
   DDC_Config_Init();
   /* ---------------------------------------------------- DDC END */
 
-  /* ---------------------------------------------------- CODER START */
-
-  /* ---------------------------------------------------- CODER END   */
-
   /* ---------------------------------------------------- DAC START */
   USR_DAC_Init();
   /* ---------------------------------------------------- DAC END */
@@ -159,8 +158,7 @@ int main(void)
   USR_SBUF_Init();
   /* ---------------------------------------------------- SBUF END */
 
-  /* Setup Done */
-
+  /* Configure DMA registers */
   htim1.hdma[TIM_DMA_ID_CC4]->Instance->PAR = (uint32_t)&GPIOD->IDR;
   htim1.hdma[TIM_DMA_ID_CC4]->Instance->NDTR = BUFFER_SIZE;
 
@@ -248,7 +246,7 @@ static void MX_TIM1_Init(void)
   htim1.Instance = TIM1;
   htim1.Init.Prescaler = 0;
   htim1.Init.CounterMode = TIM_COUNTERMODE_UP;
-  htim1.Init.Period = 0;
+  htim1.Init.Period = 65000;
   htim1.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
   htim1.Init.RepetitionCounter = 0;
   htim1.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
@@ -646,18 +644,13 @@ void USR_UDP_ReceiveCallback(struct pbuf *p, const uint32_t addr, const uint16_t
 	if (ip.IP4 == udp_ip.IP4)
 	{
 		uint8_t *pptr = (uint8_t *)p->payload;
-		if (pptr[0] == 'L')
-			HAL_GPIO_TogglePin(GPIOB, LED_Pin);
-		else if (pptr[0] == 'A')
-			USR_DDC_UdpHandler(pptr);
-		else if (pptr[0] == 'D')
-			USR_DAC_UdpHandler(pptr);
-		else if (pptr[0] == 'S')
-			USR_SBUF_UdpHandler(pptr);
-		else if (pptr[0] == 'C')
-			USR_CODER_UdpHandler(pptr);
-		else if (pptr[0] == 'P')
-			Pmod_UdpHandler(pptr);
+		if (pptr[0] == 'L') HAL_GPIO_TogglePin(GPIOB, LED_Pin);
+		else if (pptr[0] == 'A') USR_DDC_UdpHandler(pptr);
+		else if (pptr[0] == 'D') USR_DAC_UdpHandler(pptr);
+		else if (pptr[0] == 'S') USR_SBUF_UdpHandler(pptr);
+		else if (pptr[0] == 'C') USR_CODER_UdpHandler(pptr);
+		else if (pptr[0] == 'c') USR_CODER_StateSend();
+		else if (pptr[0] == 'P') Pmod_UdpHandler(pptr);
 		else if (pptr[0] == 'R')
 			/* TODO */
 			/* Send DDC configuration to PC using UDP */
@@ -701,21 +694,21 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
 	/* Pmod sync operation */
 	if ((GPIO_Pin == GPIO_PIN_0) && (setup_done == true))
 	{
-		/* Pmod Rising edge */
+		/* Pmod stop signal */
 		if (HAL_GPIO_ReadPin(GPIOB, GPIO_PIN_0) == pmod_state)
 		{
 			/* Stop Input Capture DMA in Interrupt mode */
 			HAL_TIM_IC_Stop_DMA(&htim1, TIM_CHANNEL_4);
 
 			/* Send buffered DDC data to PC */
-			do { __NOP(); } while (UDP_LOCK == USR_LOCKED);
+			while (UDP_LOCK == USR_LOCKED) { __NOP(); }
 			UDP_LOCK = USR_LOCKED;
 			USR_UDP_Send(UDP_SEND_PORT,
 						 (uint8_t *)buffers[prev_index],
 						 ((HEADER_SIZE + (BUFFER_SIZE - __HAL_DMA_GET_COUNTER(&hdma_tim1_ch4_trig_com))) * 2));
 			UDP_LOCK = USR_UNLOCKED;
 		}
-		/* Pmod Falling edge */
+		/* Pmod start signal */
 		else
 		{
 			/* Start DDC to STM32 Input Capture DMA transfer */
@@ -799,6 +792,15 @@ void SW_Set(uint8_t mode)
 		HAL_GPIO_WritePin(GPIOB, SW_A_Pin, GPIO_PIN_RESET);
 		HAL_GPIO_WritePin(GPIOB, SW_B_Pin, GPIO_PIN_SET);
 	}
+}
+
+/* @brief Coder UDP responder */
+void USR_CODER_StateSend()
+{
+	USR_UDP_InsertPostDataCh('c', 0);
+	USR_UDP_InsertPostDataCh(((char)is_power_on + '0'), 1);
+	USR_UDP_InsertPostDataCh(((char)is_started + '0'), 2);
+	USR_UDP_InsertPostDataCh(((char)is_triggered + '0'), 3);
 }
 
 void Pmod_UdpHandler(uint8_t *udp_data)
