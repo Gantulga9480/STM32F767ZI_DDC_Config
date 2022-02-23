@@ -10,7 +10,6 @@
 
 uint8_t dbuf_index = 0;
 uint8_t prev_index = 0;
-uint8_t CODE_DATA_READY = 0;
 
 int16_t DDC_Buffer1[HEADER_SIZE + BUFFER_SIZE + FOOTER_SIZE];
 int16_t DDC_Buffer2[HEADER_SIZE + BUFFER_SIZE + FOOTER_SIZE];
