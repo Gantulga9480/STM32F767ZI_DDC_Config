@@ -354,7 +354,6 @@ void USR_CODER_UdpHandler(uint8_t *udp_data)
 		ch = udp_data[2] - '0';
 		USR_CODER_ChannelFreq(ch, value);
 	}
-
 }
 
 void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)

@@ -27,7 +27,7 @@
 #include "sbuf.h"
 #include "ddc.h"
 #include "dac.h"
-// #include "coder.h"
+#include "coder.h"
 #include "defs.h"
 #include "vars.h"
 /* USER CODE END Includes */
@@ -59,6 +59,9 @@ DMA_HandleTypeDef hdma_tim1_ch4_trig_com;
 struct IP4_Container udp_ip = {10, 3, 4, 28}; // 10.3.4.28:UDP_SEND_PORT
 USR_LockTypeDef UDP_LOCK = USR_UNLOCKED;
 bool setup_done = false;
+extern bool is_power_on;
+extern bool is_started;
+extern bool is_triggered;
 GPIO_PinState pmod_state = GPIO_PIN_SET;
 /* USER CODE END PV */
 
@@ -120,8 +123,6 @@ int main(void)
   MX_LWIP_Init();
   /* USER CODE BEGIN 2 */
   /* ---------------------------------------------------- SETUP START */
-  /* Disable Pmod sync pin (PB0) External interrupt line 0 */
-  HAL_NVIC_DisableIRQ(EXTI0_IRQn);
 
   /* ---------------------------------------------------- PHY START */
   PHY_Init();
@@ -159,7 +160,6 @@ int main(void)
 
   HAL_GPIO_WritePin(GPIOB, LED_Pin, GPIO_PIN_SET);
   setup_done = true;
-  HAL_NVIC_EnableIRQ(EXTI0_IRQn);
   /* ---------------------------------------------------- SETUP END */
 
   /* USER CODE END 2 */
@@ -461,7 +461,7 @@ static void MX_DMA_Init(void)
   /* DMA interrupt init */
   /* DMA2_Stream4_IRQn interrupt configuration */
   HAL_NVIC_SetPriority(DMA2_Stream4_IRQn, 0, 0);
-  HAL_NVIC_EnableIRQ(DMA2_Stream4_IRQn);
+  // HAL_NVIC_EnableIRQ(DMA2_Stream4_IRQn); // USR_REMOVED enabled by coder
 
 }
 
@@ -601,7 +601,7 @@ static void MX_GPIO_Init(void)
 
   /* EXTI interrupt init*/
   HAL_NVIC_SetPriority(EXTI0_IRQn, 0, 0);
-  HAL_NVIC_EnableIRQ(EXTI0_IRQn);
+  // HAL_NVIC_EnableIRQ(EXTI0_IRQn); // USR_REMOVED enabled by coder
 
   HAL_NVIC_SetPriority(EXTI9_5_IRQn, 0, 0);
   HAL_NVIC_EnableIRQ(EXTI9_5_IRQn);
@@ -643,8 +643,8 @@ void USR_UDP_ReceiveCallback(struct pbuf *p, const uint32_t addr, const uint16_t
 		else if (pptr[0] == 'A') USR_DDC_UdpHandler(pptr);
 		else if (pptr[0] == 'D') USR_DAC_UdpHandler(pptr);
 		else if (pptr[0] == 'S') USR_SBUF_UdpHandler(pptr);
-		//else if (pptr[0] == 'C') USR_CODER_UdpHandler(pptr);
-		//else if (pptr[0] == 'c') USR_CODER_StateSend();
+		else if (pptr[0] == 'C') USR_CODER_UdpHandler(pptr);
+		else if (pptr[0] == 'c') USR_CODER_StateSend();
 		else if (pptr[0] == 'P') Pmod_UdpHandler(pptr);
 		else if (pptr[0] == 'R')
 			/* TODO */
@@ -662,19 +662,16 @@ void HAL_TIM_IC_CaptureCallback(TIM_HandleTypeDef *htim)
 	/* Timer1 Input Capture DMA transfer complete callback */
 	if (htim->Instance == htim1.Instance)
 	{
-		/* Start another DDC to STM32 DMA transfer */
-		if (HAL_TIM_IC_Start_DMA(&htim1,
-								 TIM_CHANNEL_4,
-								 (uint32_t *)(buffers[dbuf_index] + HEADER_SIZE),
-								 BUFFER_SIZE) != HAL_OK)
-			for (;;);
-
 		/* Send buffered DDC data to PC */
-		while (UDP_LOCK == USR_LOCKED) __NOP();
-		UDP_LOCK = USR_LOCKED;
+		//while (UDP_LOCK == USR_LOCKED) __NOP();
+		//UDP_LOCK = USR_LOCKED;
 		USR_UDP_Send(UDP_SEND_PORT, (uint8_t *)buffers[prev_index], PACKET_SIZE);
+		//UDP_LOCK = USR_UNLOCKED;
+
+		/* Start another DDC to STM32 DMA transfer */
+		HAL_TIM_IC_Start_DMA(&htim1, TIM_CHANNEL_4,
+							 (uint32_t *)(buffers[dbuf_index] + HEADER_SIZE), BUFFER_SIZE);
 		prev_index = dbuf_index; dbuf_index++; if (dbuf_index == BUFFER_COUNT) dbuf_index = 0;
-		UDP_LOCK = USR_UNLOCKED;
 	}
 }
 
@@ -792,10 +789,10 @@ void SW_Set(uint8_t mode)
 /* @brief Coder UDP responder */
 void USR_CODER_StateSend()
 {
-	//USR_UDP_InsertPostDataCh('c', 0);
-	//USR_UDP_InsertPostDataCh(((char)is_power_on + '0'), 1);
-	//USR_UDP_InsertPostDataCh(((char)is_started + '0'), 2);
-	//USR_UDP_InsertPostDataCh(((char)is_triggered + '0'), 3);
+	USR_UDP_InsertPostDataCh('c', 0);
+	USR_UDP_InsertPostDataCh(((char)is_power_on + '0'), 1);
+	USR_UDP_InsertPostDataCh(((char)is_started + '0'), 2);
+	USR_UDP_InsertPostDataCh(((char)is_triggered + '0'), 3);
 }
 
 void Pmod_UdpHandler(uint8_t *udp_data)
