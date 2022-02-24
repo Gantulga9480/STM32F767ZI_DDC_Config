@@ -153,7 +153,6 @@ int main(void)
 
   HAL_GPIO_WritePin(GPIOB, LED_Pin, GPIO_PIN_SET);
   setup_done = true;
-  HAL_NVIC_EnableIRQ(EXTI0_IRQn);
   /* ---------------------------------------------------- SETUP END */
 
   /* USER CODE END 2 */
@@ -250,10 +249,15 @@ static void MX_TIM1_Init(void)
   {
     Error_Handler();
   }
-  sConfigIC.ICPolarity = TIM_INPUTCHANNELPOLARITY_BOTHEDGE;
+  sConfigIC.ICPolarity = TIM_INPUTCHANNELPOLARITY_RISING;
   sConfigIC.ICSelection = TIM_ICSELECTION_DIRECTTI;
   sConfigIC.ICPrescaler = TIM_ICPSC_DIV1;
   sConfigIC.ICFilter = 0;
+  if (HAL_TIM_IC_ConfigChannel(&htim1, &sConfigIC, TIM_CHANNEL_3) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  sConfigIC.ICPolarity = TIM_INPUTCHANNELPOLARITY_BOTHEDGE;
   if (HAL_TIM_IC_ConfigChannel(&htim1, &sConfigIC, TIM_CHANNEL_4) != HAL_OK)
   {
     Error_Handler();
@@ -450,7 +454,7 @@ static void MX_DMA_Init(void)
   /* DMA interrupt init */
   /* DMA2_Stream4_IRQn interrupt configuration */
   HAL_NVIC_SetPriority(DMA2_Stream4_IRQn, 0, 0);
-  HAL_NVIC_EnableIRQ(DMA2_Stream4_IRQn);
+  // HAL_NVIC_EnableIRQ(DMA2_Stream4_IRQn); // USR_REMOVED enabled by coder
 
 }
 
@@ -491,7 +495,7 @@ static void MX_GPIO_Init(void)
   /*Configure GPIO pin Output Level */
   HAL_GPIO_WritePin(GPIOG, DDC_CD0_Pin|DDC_CD1_Pin|DDC_CD2_Pin|DDC_CD3_Pin
                           |DDC_CD4_Pin|DDC_CD5_Pin|DDC_CD6_Pin|DDC_CD7_Pin
-                          |DDC_WR_Pin|DDC_RD_Pin|PHY_GREEN_LED_Pin, GPIO_PIN_RESET);
+                          |DDC_WR_Pin|DDC_RD_Pin|PHY_RESET_Pin, GPIO_PIN_RESET);
 
   /*Configure GPIO pin : USER_BTN_Pin */
   GPIO_InitStruct.Pin = USER_BTN_Pin;
@@ -549,10 +553,10 @@ static void MX_GPIO_Init(void)
 
   /*Configure GPIO pins : DDC_CD0_Pin DDC_CD1_Pin DDC_CD2_Pin DDC_CD3_Pin
                            DDC_CD4_Pin DDC_CD5_Pin DDC_CD6_Pin DDC_CD7_Pin
-                           DDC_WR_Pin DDC_RD_Pin PHY_GREEN_LED_Pin */
+                           DDC_WR_Pin DDC_RD_Pin PHY_RESET_Pin */
   GPIO_InitStruct.Pin = DDC_CD0_Pin|DDC_CD1_Pin|DDC_CD2_Pin|DDC_CD3_Pin
                           |DDC_CD4_Pin|DDC_CD5_Pin|DDC_CD6_Pin|DDC_CD7_Pin
-                          |DDC_WR_Pin|DDC_RD_Pin|PHY_GREEN_LED_Pin;
+                          |DDC_WR_Pin|DDC_RD_Pin|PHY_RESET_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
@@ -570,8 +574,8 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   HAL_GPIO_Init(GPIOD, &GPIO_InitStruct);
 
-  /*Configure GPIO pins : DDC1_DV_Pin PHY_RESET_Pin */
-  GPIO_InitStruct.Pin = DDC1_DV_Pin|PHY_RESET_Pin;
+  /*Configure GPIO pins : DDC1_DV_Pin PHY_GREEN_LED_Pin */
+  GPIO_InitStruct.Pin = DDC1_DV_Pin|PHY_GREEN_LED_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   HAL_GPIO_Init(GPIOG, &GPIO_InitStruct);
@@ -590,7 +594,7 @@ static void MX_GPIO_Init(void)
 
   /* EXTI interrupt init*/
   HAL_NVIC_SetPriority(EXTI0_IRQn, 0, 0);
-  // HAL_NVIC_EnableIRQ(EXTI0_IRQn);
+  // HAL_NVIC_EnableIRQ(EXTI0_IRQn); // USR_REMOVED enabled by coder
 
   HAL_NVIC_SetPriority(EXTI9_5_IRQn, 0, 0);
   HAL_NVIC_EnableIRQ(EXTI9_5_IRQn);
