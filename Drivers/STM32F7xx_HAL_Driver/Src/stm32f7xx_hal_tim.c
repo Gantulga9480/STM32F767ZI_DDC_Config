@@ -2474,7 +2474,7 @@ HAL_StatusTypeDef HAL_TIM_IC_Start_DMA(TIM_HandleTypeDef *htim, uint32_t Channel
     {
       /* Set the DMA capture callbacks */
       htim->hdma[TIM_DMA_ID_CC4]->XferCpltCallback = TIM_DMACaptureCplt;
-      htim->hdma[TIM_DMA_ID_CC4]->XferHalfCpltCallback = TIM_DMACaptureHalfCplt;
+      // htim->hdma[TIM_DMA_ID_CC4]->XferHalfCpltCallback = TIM_DMACaptureHalfCplt;
 
       /* Set the DMA error callback */
       htim->hdma[TIM_DMA_ID_CC4]->XferErrorCallback = TIM_DMAError ;
@@ -2502,7 +2502,7 @@ HAL_StatusTypeDef HAL_TIM_IC_Start_DMA(TIM_HandleTypeDef *htim, uint32_t Channel
     tmpsmcr = htim->Instance->SMCR & TIM_SMCR_SMS;
     if (!IS_TIM_SLAVEMODE_TRIGGER_ENABLED(tmpsmcr))
     {
-      __HAL_TIM_ENABLE(htim);
+	    __HAL_TIM_ENABLE(htim);
     }
   }
   else
