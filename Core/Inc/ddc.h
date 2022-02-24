@@ -28,7 +28,7 @@
 #define NCO_ACTIVE_PAD 			0x06
 
 #define NCO_SYNC_MASK_DEFAULT   0x00FFFFFFFF
-#define NCO_RCF_SCALE_DEFAULT   0x04
+#define DDC_RCF_SCALE_DEFAULT   0x04
 
 #define DDC_MODE  				0x300
 #define DDC_NCO_MODE 			0x301
@@ -86,7 +86,7 @@ typedef struct
 
 uint8_t DDC_READY_FLAG;
 
-void USR_DDC_Init(DDC_ConfigTypeDef conf);
+void USR_DDC_Config_Init(DDC_ConfigTypeDef conf);
 void USR_DDC_UdpHandler(uint8_t *udp_data);
 
 uint64_t write_ddc(uint16_t address, uint64_t data);

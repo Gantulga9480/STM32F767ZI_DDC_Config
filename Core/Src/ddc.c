@@ -14,7 +14,7 @@ int16_t DDC_FIR_COEF[RCF_SIZE] = {
     -10, 6, 0, -7, 13, -14, 10, 0, -12, 23, -26, 18, 0, -23, 43, -48, 33, 0, -41, 75, -83, 57, 0, -69, 123, -135, 92, 0, -110, 196, -214, 145, 0, -175, 311, -342, 233, 0, -287, 520, -586, 412, 0, -554, 1071, -1321, 1058, 0, -2491, 12113, 12113, -2491, 0, 1058, -1321, 1071, -554, 0, 412, -586, 520, -287, 0, 233, -342, 311, -175, 0, 145, -214, 196, -110, 0, 92, -135, 123, -69, 0, 57, -83, 75, -41, 0, 33, -48, 43, -23, 0, 18, -26, 23, -12, 0, 10, -14, 13, -7, 0, 6, -10,
 };
 
-void USR_DDC_Init(DDC_ConfigTypeDef conf)
+void USR_DDC_Config_Init(DDC_ConfigTypeDef conf)
 {
 	hardReset();                                               // Hard reset
 	if (conf.FIR) write_rcf_ram();                             // Write FIR rams if using
@@ -78,7 +78,7 @@ void USR_DDC_UdpHandler(uint8_t *udp_data)
 		addr_start += 16;
 		val_start += 16;
 	}
-	USR_DDC_Init(ddc_conf);
+	USR_DDC_Config_Init(ddc_conf);
 }
 void flush_iq_ram()
 {

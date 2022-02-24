@@ -75,7 +75,7 @@ static void MX_TIM2_Init(void);
 static void MX_TIM3_Init(void);
 /* USER CODE BEGIN PFP */
 void UDP_Buffer_Init();
-void DDC_Config_Init();
+void USR_DDC_Init();
 void SW_Set(uint8_t mode);
 void Pmod_UdpHandler(uint8_t *udp_data);
 void PHY_Init();
@@ -140,12 +140,7 @@ int main(void)
    * */
   SW_Set(SW_INT);
 
-  /* ADC, DDC Clock 30MHz */
-  HAL_TIM_Base_Start(&htim8);
-  HAL_TIM_OC_Start(&htim8, TIM_CHANNEL_2);
-  HAL_TIM_OC_Start(&htim8, TIM_CHANNEL_1);
-
-  DDC_Config_Init();
+  USR_DDC_Init();
   /* ---------------------------------------------------- DDC END */
 
   /* ---------------------------------------------------- DAC START */
@@ -155,8 +150,6 @@ int main(void)
   /* ---------------------------------------------------- SBUF START */
   USR_SBUF_Init();
   /* ---------------------------------------------------- SBUF END */
-
-  /* Configure DMA registers */
 
   HAL_GPIO_WritePin(GPIOB, LED_Pin, GPIO_PIN_SET);
   setup_done = true;
@@ -611,9 +604,15 @@ static void MX_GPIO_Init(void)
 /* USER CODE BEGIN 4 */
 
 /* @brief DDC Initialization Function */
-void DDC_Config_Init()
+void USR_DDC_Init()
 {
 	DDC_ConfigTypeDef ddc_main_conf;
+
+	/* ADC, DDC Clock enable 30MHz */
+	HAL_TIM_Base_Start(&htim8);
+	HAL_TIM_OC_Start(&htim8, TIM_CHANNEL_2);
+	HAL_TIM_OC_Start(&htim8, TIM_CHANNEL_1);
+
 	ddc_main_conf.DDC_Mode 			= MASTER_SINGLE_REAL;
 	ddc_main_conf.NCO_Mode 			= NCO_ACTIVE;
 	ddc_main_conf.NCO_SyncMask 		= NCO_SYNC_MASK_DEFAULT;
@@ -623,12 +622,12 @@ void DDC_Config_Init()
 	ddc_main_conf.CIC2_Decimation 	= 10-1;
 	ddc_main_conf.CIC5_Scale 		= 5;
 	ddc_main_conf.CIC5_Decimation 	= 10-1;
-	ddc_main_conf.RCF_Scale 		= NCO_RCF_SCALE_DEFAULT;
+	ddc_main_conf.RCF_Scale 		= DDC_RCF_SCALE_DEFAULT;
 	ddc_main_conf.RCF_Decimation 	= DDC_RESERVED;
 	ddc_main_conf.RCF_AddressOffset = DDC_RESERVED;
 	ddc_main_conf.RCF_FilterTaps    = DDC_RESERVED;
 	ddc_main_conf.FIR               = false;
-	USR_DDC_Init(ddc_main_conf);
+	USR_DDC_Config_Init(ddc_main_conf);
 }
 
 /* @brief This function should handle received UDP packets */
@@ -662,16 +661,15 @@ void HAL_TIM_IC_CaptureCallback(TIM_HandleTypeDef *htim)
 	/* Timer1 Input Capture DMA transfer complete callback */
 	if (htim->Instance == htim1.Instance)
 	{
-		/* Send buffered DDC data to PC */
-		//while (UDP_LOCK == USR_LOCKED) __NOP();
-		//UDP_LOCK = USR_LOCKED;
-		USR_UDP_Send(UDP_SEND_PORT, (uint8_t *)buffers[prev_index], PACKET_SIZE);
-		//UDP_LOCK = USR_UNLOCKED;
-
 		/* Start another DDC to STM32 DMA transfer */
 		HAL_TIM_IC_Start_DMA(&htim1, TIM_CHANNEL_4,
 							 (uint32_t *)(buffers[dbuf_index] + HEADER_SIZE), BUFFER_SIZE);
+		/* Send buffered DDC data to PC */
+		while (UDP_LOCK == USR_LOCKED) __NOP();
+		UDP_LOCK = USR_LOCKED;
+		USR_UDP_Send(UDP_SEND_PORT, (uint8_t *)buffers[prev_index], PACKET_SIZE);
 		prev_index = dbuf_index; dbuf_index++; if (dbuf_index == BUFFER_COUNT) dbuf_index = 0;
+		UDP_LOCK = USR_UNLOCKED;
 	}
 }
 
