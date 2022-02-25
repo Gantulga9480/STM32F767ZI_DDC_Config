@@ -2336,20 +2336,6 @@ HAL_StatusTypeDef HAL_TIM_IC_Start_DMA(TIM_HandleTypeDef *htim, uint32_t Channel
   /* Enable the Input Capture channel */
   TIM_CCxChannelCmd(htim->Instance, Channel, TIM_CCx_ENABLE);
 
-  /* Enable the Peripheral, except in trigger mode where enable is automatically done with trigger */
-  if (IS_TIM_SLAVE_INSTANCE(htim->Instance))
-  {
-    tmpsmcr = htim->Instance->SMCR & TIM_SMCR_SMS;
-    if (!IS_TIM_SLAVEMODE_TRIGGER_ENABLED(tmpsmcr))
-    {
-      __HAL_TIM_ENABLE(htim);
-    }
-  }
-  else
-  {
-    __HAL_TIM_ENABLE(htim);
-  }
-
   switch (Channel)
   {
     case TIM_CHANNEL_1:
@@ -2442,7 +2428,7 @@ HAL_StatusTypeDef HAL_TIM_IC_Start_DMA(TIM_HandleTypeDef *htim, uint32_t Channel
     tmpsmcr = htim->Instance->SMCR & TIM_SMCR_SMS;
     if (!IS_TIM_SLAVEMODE_TRIGGER_ENABLED(tmpsmcr))
     {
-	    __HAL_TIM_ENABLE(htim);
+	  __HAL_TIM_ENABLE(htim);
     }
   }
   else
@@ -2504,7 +2490,7 @@ HAL_StatusTypeDef HAL_TIM_IC_Stop_DMA(TIM_HandleTypeDef *htim, uint32_t Channel)
     {
       /* Disable the TIM Capture/Compare 4  DMA request */
       __HAL_TIM_DISABLE_DMA(htim, TIM_DMA_CC4);
-      (void)HAL_DMA_Abort_IT(htim->hdma[TIM_DMA_ID_CC4]);
+      (void)HAL_DMA_Abort(htim->hdma[TIM_DMA_ID_CC4]);
       break;
     }
 
