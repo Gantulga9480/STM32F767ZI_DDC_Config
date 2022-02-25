@@ -251,6 +251,7 @@ void USR_CODER_PowerOn()
 		USR_CODER_Long(POWER_ON_1, POWER_ON_1_D);
 		USR_CODER_Short(POWER_ON_2, POWER_ON_2_D);
 		is_power_on = true;
+		HAL_Delay(1);
 	}
 	HAL_GPIO_WritePin(GPIOB, LED_Pin, GPIO_PIN_SET);
 }
