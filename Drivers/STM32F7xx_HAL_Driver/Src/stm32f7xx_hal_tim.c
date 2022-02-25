@@ -2436,7 +2436,6 @@ HAL_StatusTypeDef HAL_TIM_IC_Start_DMA(TIM_HandleTypeDef *htim, uint32_t Channel
       break;
   }
 
-<<<<<<< HEAD
   /* Enable the Peripheral, except in trigger mode where enable is automatically done with trigger */
   if (IS_TIM_SLAVE_INSTANCE(htim->Instance))
   {
@@ -2451,8 +2450,6 @@ HAL_StatusTypeDef HAL_TIM_IC_Start_DMA(TIM_HandleTypeDef *htim, uint32_t Channel
     __HAL_TIM_ENABLE(htim);
   }
 
-=======
->>>>>>> parent of 17cabd7 (after cube generation 2/24 failed)
   /* Return function status */
   return HAL_OK;
 }
