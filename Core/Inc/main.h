@@ -178,10 +178,10 @@ void Error_Handler(void);
 #define DDC_WR_GPIO_Port GPIOG
 #define DDC_RD_Pin GPIO_PIN_10
 #define DDC_RD_GPIO_Port GPIOG
-#define PHY_GREEN_LED_Pin GPIO_PIN_14
-#define PHY_GREEN_LED_GPIO_Port GPIOG
 #define PHY_RESET_Pin GPIO_PIN_12
 #define PHY_RESET_GPIO_Port GPIOG
+#define PHY_GREEN_LED_Pin GPIO_PIN_14
+#define PHY_GREEN_LED_GPIO_Port GPIOG
 #define LED_Pin GPIO_PIN_3
 #define LED_GPIO_Port GPIOB
 /* USER CODE BEGIN Private defines */
