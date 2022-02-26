@@ -9,6 +9,7 @@
 #include "coder.h"
 #include "usr.h"
 
+extern TIM_HandleTypeDef htim1;
 extern TIM_HandleTypeDef htim2;
 extern TIM_HandleTypeDef htim3;
 
@@ -238,7 +239,6 @@ void USR_CODER_Start()
 		USR_CODER_Long(START_3, START_3_D);
 		USR_CODER_Short(START_4, START_4_D);
 		USR_CODER_Long(START_5, START_5_D);
-		HAL_NVIC_EnableIRQ(TIM3_IRQn);
 		HAL_TIM_Base_Start_IT(&htim3);
 		is_started = true;
 	}
@@ -251,27 +251,22 @@ void USR_CODER_PowerOn()
 		USR_CODER_Long(POWER_ON_1, POWER_ON_1_D);
 		USR_CODER_Short(POWER_ON_2, POWER_ON_2_D);
 		is_power_on = true;
-		HAL_Delay(1);
 	}
-	HAL_GPIO_WritePin(GPIOB, LED_Pin, GPIO_PIN_SET);
 }
 
 void USR_CODER_PowerOff()
 {
 	if (is_power_on == true)
 	{
-		HAL_TIM_Base_Stop_IT(&htim3);
-		HAL_NVIC_DisableIRQ(TIM3_IRQn);
 		HAL_NVIC_DisableIRQ(EXTI0_IRQn);
-		HAL_NVIC_DisableIRQ(DMA2_Stream4_IRQn);
+		HAL_TIM_Base_Stop_IT(&htim3);
+		HAL_TIM_IC_Stop_IT(&htim1, TIM_CHANNEL_4);
 		USR_CODER_Long(POWER_OFF_1, POWER_OFF_1_D);
 		USR_CODER_Short(POWER_OFF_2, POWER_OFF_2_D);
 		is_power_on = false;
 		is_triggered = false;
 		is_started = false;
-		HAL_Delay(1);
 	}
-	HAL_GPIO_WritePin(GPIOB, LED_Pin, GPIO_PIN_SET);
 }
 
 void USR_CODER_TriggerOn()
@@ -280,7 +275,6 @@ void USR_CODER_TriggerOn()
 	{
 		HAL_NVIC_DisableIRQ(TIM3_IRQn);
 		HAL_NVIC_EnableIRQ(EXTI0_IRQn);
-		HAL_NVIC_EnableIRQ(DMA2_Stream4_IRQn);
 		USR_CODER_Long(TRIGGER_ON_1, TRIGGER_ON_1_D);
 		USR_CODER_Short(TRIGGER_ON_2, TRIGGER_ON_2_D);
 		HAL_NVIC_EnableIRQ(TIM3_IRQn);
@@ -294,7 +288,7 @@ void USR_CODER_TriggerOff()
 	{
 		HAL_NVIC_DisableIRQ(TIM3_IRQn);
 		HAL_NVIC_DisableIRQ(EXTI0_IRQn);
-		HAL_NVIC_DisableIRQ(DMA2_Stream4_IRQn);
+		HAL_TIM_IC_Stop_IT(&htim1, TIM_CHANNEL_4);
 		USR_CODER_Long(TRIGGER_OFF_1, TRIGGER_OFF_1_D);
 		USR_CODER_Short(TRIGGER_OFF_2, TRIGGER_OFF_2_D);
 		HAL_NVIC_EnableIRQ(TIM3_IRQn);
@@ -307,8 +301,10 @@ void USR_CODER_ChannelCode(uint8_t index)
 	if ((is_triggered == false) && (is_started == true))
 	{
 		HAL_NVIC_DisableIRQ(TIM3_IRQn);
+		HAL_NVIC_DisableIRQ(EXTI0_IRQn);
 		USR_CODER_Long(CH_START, CH_START_D);
 		USR_CODER_Short(CHANNELS_CODE[index], CH_D);
+		HAL_NVIC_EnableIRQ(EXTI0_IRQn);
 		HAL_NVIC_EnableIRQ(TIM3_IRQn);
 	}
 }
@@ -318,8 +314,10 @@ void USR_CODER_ChannelFreq(uint8_t channel, uint8_t index)
 	if ((is_triggered == false) && (is_started == true))
 	{
 		HAL_NVIC_DisableIRQ(TIM3_IRQn);
+		HAL_NVIC_DisableIRQ(EXTI0_IRQn);
 		USR_CODER_Long(CHANNELS_FREQ_START[channel], CH_F_START_D);
 		USR_CODER_Short(CHANNELS_FREQ[index], CHANNELS_FREQ_DELAY[index]);
+		HAL_NVIC_EnableIRQ(EXTI0_IRQn);
 		HAL_NVIC_EnableIRQ(TIM3_IRQn);
 	}
 }

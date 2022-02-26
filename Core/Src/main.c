@@ -57,12 +57,12 @@ TIM_HandleTypeDef htim8;
 /* USER CODE BEGIN PV */
 struct IP4_Container udp_ip = {10, 3, 4, 28}; // 10.3.4.28:UDP_SEND_PORT
 USR_LockTypeDef UDP_LOCK = USR_UNLOCKED;
-bool setup_done = false;
+bool transfer_ready = false;
+
 extern bool is_power_on;
 extern bool is_started;
 extern bool is_triggered;
 GPIO_PinState pmod_state = GPIO_PIN_SET;
-uint16_t buffer_index = 2;
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -116,9 +116,9 @@ int main(void)
   MX_GPIO_Init();
   MX_TIM1_Init();
   MX_TIM8_Init();
+  MX_LWIP_Init();
   MX_TIM2_Init();
   MX_TIM3_Init();
-  MX_LWIP_Init();
   /* USER CODE BEGIN 2 */
   /* ---------------------------------------------------- SETUP START */
 
@@ -150,9 +150,6 @@ int main(void)
   /* ---------------------------------------------------- SBUF END */
 
   HAL_GPIO_WritePin(GPIOB, LED_Pin, GPIO_PIN_SET);
-  setup_done = true;
-  HAL_NVIC_EnableIRQ(TIM1_CC_IRQn);
-  HAL_TIM_IC_Start_IT(&htim1, TIM_CHANNEL_4);
   /* ---------------------------------------------------- SETUP END */
 
   /* USER CODE END 2 */
@@ -162,6 +159,14 @@ int main(void)
   while (1)
   {
 	MX_LWIP_Process();
+	if (transfer_ready)
+	{
+		while (UDP_LOCK == USR_LOCKED) __NOP();
+		UDP_LOCK = USR_LOCKED;
+		USR_UDP_Send(UDP_SEND_PORT, (uint8_t *)buffers[prev_index], PACKET_SIZE);
+		transfer_ready = false;
+		UDP_LOCK = USR_UNLOCKED;
+	}
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
@@ -474,7 +479,7 @@ static void MX_GPIO_Init(void)
   /*Configure GPIO pin Output Level */
   HAL_GPIO_WritePin(GPIOG, DDC_CD0_Pin|DDC_CD1_Pin|DDC_CD2_Pin|DDC_CD3_Pin
                           |DDC_CD4_Pin|DDC_CD5_Pin|DDC_CD6_Pin|DDC_CD7_Pin
-                          |DDC_WR_Pin|DDC_RD_Pin|PHY_GREEN_LED_Pin, GPIO_PIN_RESET);
+                          |DDC_WR_Pin|DDC_RD_Pin|PHY_RESET_Pin, GPIO_PIN_RESET);
 
   /*Configure GPIO pin : USER_BTN_Pin */
   GPIO_InitStruct.Pin = USER_BTN_Pin;
@@ -532,10 +537,10 @@ static void MX_GPIO_Init(void)
 
   /*Configure GPIO pins : DDC_CD0_Pin DDC_CD1_Pin DDC_CD2_Pin DDC_CD3_Pin
                            DDC_CD4_Pin DDC_CD5_Pin DDC_CD6_Pin DDC_CD7_Pin
-                           DDC_WR_Pin DDC_RD_Pin PHY_GREEN_LED_Pin */
+                           DDC_WR_Pin DDC_RD_Pin PHY_RESET_Pin */
   GPIO_InitStruct.Pin = DDC_CD0_Pin|DDC_CD1_Pin|DDC_CD2_Pin|DDC_CD3_Pin
                           |DDC_CD4_Pin|DDC_CD5_Pin|DDC_CD6_Pin|DDC_CD7_Pin
-                          |DDC_WR_Pin|DDC_RD_Pin|PHY_GREEN_LED_Pin;
+                          |DDC_WR_Pin|DDC_RD_Pin|PHY_RESET_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
@@ -553,8 +558,8 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   HAL_GPIO_Init(GPIOD, &GPIO_InitStruct);
 
-  /*Configure GPIO pins : DDC1_DV_Pin PHY_RESET_Pin */
-  GPIO_InitStruct.Pin = DDC1_DV_Pin|PHY_RESET_Pin;
+  /*Configure GPIO pins : DDC1_DV_Pin PHY_GREEN_LED_Pin */
+  GPIO_InitStruct.Pin = DDC1_DV_Pin|PHY_GREEN_LED_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   HAL_GPIO_Init(GPIOG, &GPIO_InitStruct);
@@ -573,7 +578,6 @@ static void MX_GPIO_Init(void)
 
   /* EXTI interrupt init*/
   HAL_NVIC_SetPriority(EXTI0_IRQn, 0, 0);
-  // HAL_NVIC_EnableIRQ(EXTI0_IRQn);
 
   HAL_NVIC_SetPriority(EXTI9_5_IRQn, 0, 0);
   HAL_NVIC_EnableIRQ(EXTI9_5_IRQn);
@@ -632,33 +636,6 @@ void USR_UDP_ReceiveCallback(struct pbuf *p, const uint32_t addr, const uint16_t
 	}
 }
 
-/* @brief Timer DMA Input Capture mode callback */
-/* @brief Start another DMA transfer in Input Capture mode */
-/* @brief Send filled buffer */
-void HAL_TIM_IC_CaptureCallback(TIM_HandleTypeDef *htim)
-{
-	/* Timer1 Input Capture DMA transfer complete callback */
-	if (htim->Instance == htim1.Instance)
-	{
-		/* Start another DDC to STM32 DMA transfer */
-		// HAL_GPIO_TogglePin(GPIOB, LED_Pin);
-		buffers[prev_index][buffer_index] = (int16_t)GPIOD->IDR;
-		buffer_index++;
-		//HAL_TIM_IC_Start_DMA(&htim1, TIM_CHANNEL_4,
-		//					 (uint32_t *)(buffers[dbuf_index] + HEADER_SIZE), BUFFER_SIZE);
-		/* Send buffered DDC data to PC */
-		if (buffer_index == 502)
-		{
-			buffer_index = 2;
-			while (UDP_LOCK == USR_LOCKED) __NOP();
-			UDP_LOCK = USR_LOCKED;
-			USR_UDP_Send(UDP_SEND_PORT, (uint8_t *)buffers[prev_index], PACKET_SIZE);
-			prev_index = dbuf_index; dbuf_index++; if (dbuf_index == BUFFER_COUNT) dbuf_index = 0;
-			UDP_LOCK = USR_UNLOCKED;
-		}
-	}
-}
-
 void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
 {
 	/* DDC ready interrupt */
@@ -668,29 +645,27 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
 	}
 
 	/* Pmod sync operation */
-	if ((GPIO_Pin == GPIO_PIN_0) && (setup_done == true))
+	if ((GPIO_Pin == GPIO_PIN_0))
 	{
 		/* Pmod stop signal */
 		if (HAL_GPIO_ReadPin(GPIOB, GPIO_PIN_0) == pmod_state)
 		{
-			/* Stop Input Capture DMA in Interrupt mode */
-			// HAL_TIM_IC_Stop_DMA(&htim1, TIM_CHANNEL_4);
+			/* Stop Input Capture in Interrupt mode */
+			HAL_TIM_IC_Stop_IT(&htim1, TIM_CHANNEL_4);
 
 			/* Send buffered DDC data to PC */
-			while (UDP_LOCK == USR_LOCKED) { __NOP(); }
+			prev_index = dbuf_index;
+			while (UDP_LOCK == USR_LOCKED) __NOP();
 			UDP_LOCK = USR_LOCKED;
-			//USR_UDP_Send(UDP_SEND_PORT,
-			//			 (uint8_t *)buffers[prev_index],
-			//			 ((HEADER_SIZE + (BUFFER_SIZE - __HAL_DMA_GET_COUNTER(&hdma_tim1_ch4_trig_com))) * 2));
+			USR_UDP_Send(UDP_SEND_PORT, (uint8_t *)buffers[prev_index], (buffer_index*2));
 			UDP_LOCK = USR_UNLOCKED;
 		}
 		/* Pmod start signal */
 		else
 		{
-
-			/* Start DDC to STM32 Input Capture DMA transfer */
-			// HAL_TIM_IC_Start_DMA(&htim1, TIM_CHANNEL_4, (uint32_t *)(buffers[0] + HEADER_SIZE), BUFFER_SIZE);
-			dbuf_index = 1; prev_index = 0;
+			/* Start DDC to STM32 Input Capture transfer */
+			HAL_TIM_IC_Start_IT(&htim1, TIM_CHANNEL_4);
+			dbuf_index = 0; prev_index = 0; buffer_index = HEADER_SIZE;
 		}
 	}
 }
