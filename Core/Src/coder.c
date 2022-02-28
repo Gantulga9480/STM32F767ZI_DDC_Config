@@ -226,8 +226,8 @@ extern uint16_t *CODE_DATA;
 extern uint16_t CODE_LEN;
 
 uint8_t value, ch;
-bool is_power_on = false;
-bool is_started = false;
+bool is_power_on  = false;
+bool is_started   = false;
 bool is_triggered = false;
 
 void USR_CODER_Start()
@@ -365,13 +365,13 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 		COUNTER_93[3] = (0b1100000000 | value_93);
 		COUNTER_93[4] = (0b1000000000 | value_93);
 		COUNTER_93[5] = (0b1100000000 | value_93);
-		USR_CODER_Short(COUNTER_93, counter_len);
+		USR_CODER_Short(test_code, counter_len);
 		if (value_93 == 7)
 		{
 			COUNTER_94[3] = (0b1100000000 | value_94);
 			COUNTER_94[4] = (0b1000000000 | value_94);
 			COUNTER_94[5] = (0b1100000000 | value_94);
-			USR_CODER_Short(COUNTER_94, counter_len);
+			// USR_CODER_Short(COUNTER_94, counter_len);
 			if (value_94 == 1) value_94 = 0;
 			else value_94 = 1;
 		}

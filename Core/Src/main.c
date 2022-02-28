@@ -56,8 +56,6 @@ TIM_HandleTypeDef htim8;
 
 /* USER CODE BEGIN PV */
 struct IP4_Container udp_ip = {10, 3, 4, 28}; // 10.3.4.28:UDP_SEND_PORT
-USR_LockTypeDef UDP_LOCK = USR_UNLOCKED;
-bool transfer_ready = false;
 
 extern bool is_power_on;
 extern bool is_started;
@@ -159,14 +157,6 @@ int main(void)
   while (1)
   {
 	MX_LWIP_Process();
-	if (transfer_ready)
-	{
-		while (UDP_LOCK == USR_LOCKED) __NOP();
-		UDP_LOCK = USR_LOCKED;
-		USR_UDP_Send(UDP_SEND_PORT, (uint8_t *)buffers[prev_index], PACKET_SIZE);
-		transfer_ready = false;
-		UDP_LOCK = USR_UNLOCKED;
-	}
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
@@ -620,6 +610,7 @@ void USR_UDP_ReceiveCallback(struct pbuf *p, const uint32_t addr, const uint16_t
 	ip = toIP4(addr);
 	if (ip.IP4 == udp_ip.IP4)
 	{
+		HAL_NVIC_DisableIRQ(TIM1_CC_IRQn);
 		uint8_t *pptr = (uint8_t *)p->payload;
 		if (pptr[0] == 'L') HAL_GPIO_TogglePin(GPIOB, LED_Pin);
 		else if (pptr[0] == 'A') USR_DDC_UdpHandler(pptr);
@@ -633,6 +624,7 @@ void USR_UDP_ReceiveCallback(struct pbuf *p, const uint32_t addr, const uint16_t
 			/* Send DDC configuration to PC using UDP */
 			/* Make DDC configuration struct public */
 			__NOP();
+		HAL_NVIC_EnableIRQ(TIM1_CC_IRQn);
 	}
 }
 
@@ -650,22 +642,35 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
 		/* Pmod stop signal */
 		if (HAL_GPIO_ReadPin(GPIOB, GPIO_PIN_0) == pmod_state)
 		{
-			/* Stop Input Capture in Interrupt mode */
+			/* Stop DDC to STM32 Input Capture transfer in Interrupt mode */
 			HAL_TIM_IC_Stop_IT(&htim1, TIM_CHANNEL_4);
 
 			/* Send buffered DDC data to PC */
 			prev_index = dbuf_index;
-			while (UDP_LOCK == USR_LOCKED) __NOP();
-			UDP_LOCK = USR_LOCKED;
-			USR_UDP_Send(UDP_SEND_PORT, (uint8_t *)buffers[prev_index], (buffer_index*2));
-			UDP_LOCK = USR_UNLOCKED;
+			dbuf_index++; if (dbuf_index == BUFFER_COUNT) dbuf_index = 0;
+			tmp_buffer_index = buffer_index; buffer_index = HEADER_SIZE;
+			if (tmp_buffer_index > (BUFFER_SIZE/2 + HEADER_SIZE))
+			{
+				USR_UDP_Send(UDP_SEND_PORT, (uint8_t *)buffers[prev_index], PACKET_SIZE);
+				if (tmp_buffer_index <= (BUFFER_SIZE+1))
+				{
+					buffers[prev_index][tmp_buffer_index] = FOOTER;
+					buffers[prev_index][tmp_buffer_index+1] = FOOTER;
+				}
+				USR_UDP_Send(UDP_SEND_PORT,
+							 (uint8_t *)(buffers[prev_index] + BUFFER_SIZE/2 + HEADER_SIZE),
+							 (tmp_buffer_index - BUFFER_SIZE/2) * 2);
+			}
+			else
+			{
+				USR_UDP_Send(UDP_SEND_PORT, (uint8_t *)buffers[prev_index], (tmp_buffer_index)*2);
+			}
 		}
 		/* Pmod start signal */
 		else
 		{
-			/* Start DDC to STM32 Input Capture transfer */
+			/* Start DDC to STM32 Input Capture transfer in Interrupt mode */
 			HAL_TIM_IC_Start_IT(&htim1, TIM_CHANNEL_4);
-			dbuf_index = 0; prev_index = 0; buffer_index = HEADER_SIZE;
 		}
 	}
 }
@@ -680,7 +685,7 @@ void UDP_Buffer_Init()
 		for (j = 0; j < HEADER_SIZE; j++) { buffers[i][j] = HEADER; }
 
 		/* Insert buffer index in header */
-		buffers[i][0] = (i + 49);
+		// buffers[i][0] = (i + 49);
 
 		/* FOOTER */
 		for (j = 0; j < FOOTER_SIZE; j++) { buffers[i][HEADER_SIZE + BUFFER_SIZE + j] = FOOTER; }
