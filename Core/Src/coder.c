@@ -304,7 +304,6 @@ void USR_CODER_ChannelCode(uint8_t index)
 		HAL_NVIC_DisableIRQ(TIM3_IRQn);
 		USR_CODER_Long(CH_START, CH_START_D);
 		USR_CODER_Short(CHANNELS_CODE[index], CH_D);
-		HAL_NVIC_EnableIRQ(EXTI0_IRQn);
 		HAL_NVIC_EnableIRQ(TIM3_IRQn);
 	}
 }
@@ -316,7 +315,6 @@ void USR_CODER_ChannelFreq(uint8_t channel, uint8_t index)
 		HAL_NVIC_DisableIRQ(TIM3_IRQn);
 		USR_CODER_Long(CHANNELS_FREQ_START[channel], CH_F_START_D);
 		USR_CODER_Short(CHANNELS_FREQ[index], CHANNELS_FREQ_DELAY[index]);
-		HAL_NVIC_EnableIRQ(EXTI0_IRQn);
 		HAL_NVIC_EnableIRQ(TIM3_IRQn);
 	}
 }

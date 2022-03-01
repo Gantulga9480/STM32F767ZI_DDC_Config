@@ -613,7 +613,6 @@ void USR_UDP_ReceiveCallback(struct pbuf *p, const uint32_t addr, const uint16_t
 		else if (pptr[0] == 'D') USR_DAC_UdpHandler(pptr);
 		else if (pptr[0] == 'S') USR_SBUF_UdpHandler(pptr);
 		else if (pptr[0] == 'C') USR_CODER_UdpHandler(pptr);
-		else if (pptr[0] == 'c') USR_CODER_StateSend();
 		else if (pptr[0] == 'P') Pmod_UdpHandler(pptr);
 		else if (pptr[0] == 'R')
 			/* TODO */
