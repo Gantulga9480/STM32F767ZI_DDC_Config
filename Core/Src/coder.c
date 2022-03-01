@@ -8,6 +8,7 @@
 #include "main.h"
 #include "coder.h"
 #include "usr.h"
+#include "udp_server.h"
 
 extern TIM_HandleTypeDef htim1;
 extern TIM_HandleTypeDef htim2;
@@ -301,7 +302,6 @@ void USR_CODER_ChannelCode(uint8_t index)
 	if ((is_triggered == false) && (is_started == true))
 	{
 		HAL_NVIC_DisableIRQ(TIM3_IRQn);
-		HAL_NVIC_DisableIRQ(EXTI0_IRQn);
 		USR_CODER_Long(CH_START, CH_START_D);
 		USR_CODER_Short(CHANNELS_CODE[index], CH_D);
 		HAL_NVIC_EnableIRQ(EXTI0_IRQn);
@@ -314,12 +314,20 @@ void USR_CODER_ChannelFreq(uint8_t channel, uint8_t index)
 	if ((is_triggered == false) && (is_started == true))
 	{
 		HAL_NVIC_DisableIRQ(TIM3_IRQn);
-		HAL_NVIC_DisableIRQ(EXTI0_IRQn);
 		USR_CODER_Long(CHANNELS_FREQ_START[channel], CH_F_START_D);
 		USR_CODER_Short(CHANNELS_FREQ[index], CHANNELS_FREQ_DELAY[index]);
 		HAL_NVIC_EnableIRQ(EXTI0_IRQn);
 		HAL_NVIC_EnableIRQ(TIM3_IRQn);
 	}
+}
+
+/* @brief Coder UDP responder */
+void USR_CODER_StateSend()
+{
+	USR_UDP_InsertPostDataCh('c', 0);
+	USR_UDP_InsertPostDataCh(((char)is_power_on + '0'), 1);
+	USR_UDP_InsertPostDataCh(((char)is_started + '0'), 2);
+	USR_UDP_InsertPostDataCh(((char)is_triggered + '0'), 3);
 }
 
 void USR_CODER_Short(const uint16_t *code, uint16_t length)
@@ -343,6 +351,7 @@ void USR_CODER_UdpHandler(uint8_t *udp_data)
 	else if (udp_data[1] == 'S') { USR_CODER_Start(); }
 	else if (udp_data[1] == 'T') { USR_CODER_TriggerOn(); }
 	else if (udp_data[1] == 't') { USR_CODER_TriggerOff(); }
+	else if (udp_data[1] == 'c') { USR_CODER_StateSend(); }
 	else if (udp_data[1] == 'C')
 	{
 		value = (udp_data[3] - '0') * 100 + (udp_data[4] - '0') * 10 + (udp_data[5] - '0');
@@ -350,7 +359,7 @@ void USR_CODER_UdpHandler(uint8_t *udp_data)
 	}
 	else if (udp_data[1] == 'F')
 	{
-		value = (udp_data[3] - '0') * 100 + (udp_data[4] - '0') * 10 + (udp_data[5] - '0');
+		value = (udp_data[3] - '0') * 10 + (udp_data[4] - '0');
 		ch = udp_data[2] - '0';
 		USR_CODER_ChannelFreq(ch, value);
 	}
@@ -365,13 +374,13 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 		COUNTER_93[3] = (0b1100000000 | value_93);
 		COUNTER_93[4] = (0b1000000000 | value_93);
 		COUNTER_93[5] = (0b1100000000 | value_93);
-		USR_CODER_Short(test_code, counter_len);
+		USR_CODER_Short(COUNTER_93, counter_len);
 		if (value_93 == 7)
 		{
 			COUNTER_94[3] = (0b1100000000 | value_94);
 			COUNTER_94[4] = (0b1000000000 | value_94);
 			COUNTER_94[5] = (0b1100000000 | value_94);
-			// USR_CODER_Short(COUNTER_94, counter_len);
+			USR_CODER_Short(COUNTER_94, counter_len);
 			if (value_94 == 1) value_94 = 0;
 			else value_94 = 1;
 		}

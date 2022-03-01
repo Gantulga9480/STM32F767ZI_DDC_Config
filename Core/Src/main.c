@@ -56,10 +56,6 @@ TIM_HandleTypeDef htim8;
 
 /* USER CODE BEGIN PV */
 struct IP4_Container udp_ip = {10, 3, 4, 28}; // 10.3.4.28:UDP_SEND_PORT
-
-extern bool is_power_on;
-extern bool is_started;
-extern bool is_triggered;
 GPIO_PinState pmod_state = GPIO_PIN_SET;
 /* USER CODE END PV */
 
@@ -749,15 +745,6 @@ void SW_Set(uint8_t mode)
 		HAL_GPIO_WritePin(GPIOB, SW_A_Pin, GPIO_PIN_RESET);
 		HAL_GPIO_WritePin(GPIOB, SW_B_Pin, GPIO_PIN_SET);
 	}
-}
-
-/* @brief Coder UDP responder */
-void USR_CODER_StateSend()
-{
-	USR_UDP_InsertPostDataCh('c', 0);
-	USR_UDP_InsertPostDataCh(((char)is_power_on + '0'), 1);
-	USR_UDP_InsertPostDataCh(((char)is_started + '0'), 2);
-	USR_UDP_InsertPostDataCh(((char)is_triggered + '0'), 3);
 }
 
 void Pmod_UdpHandler(uint8_t *udp_data)

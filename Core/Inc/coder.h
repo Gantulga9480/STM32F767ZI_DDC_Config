@@ -84,6 +84,7 @@ void USR_CODER_PowerOn();
 void USR_CODER_PowerOff();
 void USR_CODER_TriggerOn();
 void USR_CODER_TriggerOff();
+void USR_CODER_StateSend();
 void USR_CODER_ChannelCode(uint8_t index);
 void USR_CODER_ChannelFreq(uint8_t channel, uint8_t index);
 void USR_CODER_Long(uint16_t code, uint16_t delay);
