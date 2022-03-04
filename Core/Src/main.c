@@ -130,7 +130,7 @@ int main(void)
    * SW_INT for internal OSC
    * SW_EXT for external OSC
    * */
-  SW_Set(SW_INT);
+  SW_Set(SW_EXT);
 
   USR_DDC_Init();
   /* ---------------------------------------------------- DDC END */
