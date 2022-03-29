@@ -56,7 +56,7 @@ TIM_HandleTypeDef htim8;
 
 /* USER CODE BEGIN PV */
 struct IP4_Container udp_ip = {10, 3, 4, 28}; // 10.3.4.28:UDP_SEND_PORT
-GPIO_PinState pmod_state = GPIO_PIN_SET;
+GPIO_PinState pmod_state = GPIO_PIN_RESET;
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -144,6 +144,7 @@ int main(void)
   /* ---------------------------------------------------- SBUF END */
 
   HAL_GPIO_WritePin(GPIOB, LED_Pin, GPIO_PIN_SET);
+  HAL_NVIC_EnableIRQ(EXTI0_IRQn);  // Pmod enable
   /* ---------------------------------------------------- SETUP END */
 
   /* USER CODE END 2 */
@@ -589,9 +590,9 @@ void USR_DDC_Init()
 	ddc_main_conf.NCO_PhaseOffset 	= DDC_RESERVED;
 	ddc_main_conf.CIC2_Scale 		= 6;
 	ddc_main_conf.CIC2_Decimation 	= 10-1;
-	ddc_main_conf.CIC5_Scale 		= 5;
+	ddc_main_conf.CIC5_Scale 		= 7;
 	ddc_main_conf.CIC5_Decimation 	= 10-1;
-	ddc_main_conf.RCF_Scale 		= DDC_RCF_SCALE_DEFAULT;
+	ddc_main_conf.RCF_Scale 		= 3;
 	ddc_main_conf.RCF_Decimation 	= DDC_RESERVED;
 	ddc_main_conf.RCF_AddressOffset = DDC_RESERVED;
 	ddc_main_conf.RCF_FilterTaps    = DDC_RESERVED;
