@@ -53,16 +53,10 @@ TIM_HandleTypeDef htim1;
 TIM_HandleTypeDef htim2;
 TIM_HandleTypeDef htim3;
 TIM_HandleTypeDef htim8;
-DMA_HandleTypeDef hdma_tim1_ch4_trig_com;
 
 /* USER CODE BEGIN PV */
 struct IP4_Container udp_ip = {10, 3, 4, 28}; // 10.3.4.28:UDP_SEND_PORT
-USR_LockTypeDef UDP_LOCK = USR_UNLOCKED;
-bool setup_done = false;
-extern bool is_power_on;
-extern bool is_started;
-extern bool is_triggered;
-GPIO_PinState pmod_state = GPIO_PIN_SET;
+GPIO_PinState pmod_state = GPIO_PIN_RESET;
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -70,7 +64,6 @@ void SystemClock_Config(void);
 static void MX_GPIO_Init(void);
 static void MX_TIM1_Init(void);
 static void MX_TIM8_Init(void);
-static void MX_DMA_Init(void);
 static void MX_TIM2_Init(void);
 static void MX_TIM3_Init(void);
 /* USER CODE BEGIN PFP */
@@ -115,12 +108,11 @@ int main(void)
 
   /* Initialize all configured peripherals */
   MX_GPIO_Init();
-  MX_DMA_Init();
   MX_TIM1_Init();
   MX_TIM8_Init();
+  MX_LWIP_Init();
   MX_TIM2_Init();
   MX_TIM3_Init();
-  MX_LWIP_Init();
   /* USER CODE BEGIN 2 */
   /* ---------------------------------------------------- SETUP START */
 
@@ -138,7 +130,7 @@ int main(void)
    * SW_INT for internal OSC
    * SW_EXT for external OSC
    * */
-  SW_Set(SW_INT);
+  SW_Set(SW_EXT);
 
   USR_DDC_Init();
   /* ---------------------------------------------------- DDC END */
@@ -152,7 +144,7 @@ int main(void)
   /* ---------------------------------------------------- SBUF END */
 
   HAL_GPIO_WritePin(GPIOB, LED_Pin, GPIO_PIN_SET);
-  setup_done = true;
+  HAL_NVIC_EnableIRQ(EXTI0_IRQn);  // Pmod enable
   /* ---------------------------------------------------- SETUP END */
 
   /* USER CODE END 2 */
@@ -234,7 +226,7 @@ static void MX_TIM1_Init(void)
   htim1.Instance = TIM1;
   htim1.Init.Prescaler = 0;
   htim1.Init.CounterMode = TIM_COUNTERMODE_UP;
-  htim1.Init.Period = 0;
+  htim1.Init.Period = 60000-1;
   htim1.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
   htim1.Init.RepetitionCounter = 0;
   htim1.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
@@ -253,11 +245,6 @@ static void MX_TIM1_Init(void)
   sConfigIC.ICSelection = TIM_ICSELECTION_DIRECTTI;
   sConfigIC.ICPrescaler = TIM_ICPSC_DIV1;
   sConfigIC.ICFilter = 0;
-  if (HAL_TIM_IC_ConfigChannel(&htim1, &sConfigIC, TIM_CHANNEL_3) != HAL_OK)
-  {
-    Error_Handler();
-  }
-  sConfigIC.ICPolarity = TIM_INPUTCHANNELPOLARITY_BOTHEDGE;
   if (HAL_TIM_IC_ConfigChannel(&htim1, &sConfigIC, TIM_CHANNEL_4) != HAL_OK)
   {
     Error_Handler();
@@ -443,22 +430,6 @@ static void MX_TIM8_Init(void)
 }
 
 /**
-  * Enable DMA controller clock
-  */
-static void MX_DMA_Init(void)
-{
-
-  /* DMA controller clock enable */
-  __HAL_RCC_DMA2_CLK_ENABLE();
-
-  /* DMA interrupt init */
-  /* DMA2_Stream4_IRQn interrupt configuration */
-  HAL_NVIC_SetPriority(DMA2_Stream4_IRQn, 0, 0);
-  // HAL_NVIC_EnableIRQ(DMA2_Stream4_IRQn); // USR_REMOVED enabled by coder
-
-}
-
-/**
   * @brief GPIO Initialization Function
   * @param None
   * @retval None
@@ -594,7 +565,6 @@ static void MX_GPIO_Init(void)
 
   /* EXTI interrupt init*/
   HAL_NVIC_SetPriority(EXTI0_IRQn, 0, 0);
-  // HAL_NVIC_EnableIRQ(EXTI0_IRQn); // USR_REMOVED enabled by coder
 
   HAL_NVIC_SetPriority(EXTI9_5_IRQn, 0, 0);
   HAL_NVIC_EnableIRQ(EXTI9_5_IRQn);
@@ -620,9 +590,9 @@ void USR_DDC_Init()
 	ddc_main_conf.NCO_PhaseOffset 	= DDC_RESERVED;
 	ddc_main_conf.CIC2_Scale 		= 6;
 	ddc_main_conf.CIC2_Decimation 	= 10-1;
-	ddc_main_conf.CIC5_Scale 		= 5;
+	ddc_main_conf.CIC5_Scale 		= 7;
 	ddc_main_conf.CIC5_Decimation 	= 10-1;
-	ddc_main_conf.RCF_Scale 		= DDC_RCF_SCALE_DEFAULT;
+	ddc_main_conf.RCF_Scale 		= 3;
 	ddc_main_conf.RCF_Decimation 	= DDC_RESERVED;
 	ddc_main_conf.RCF_AddressOffset = DDC_RESERVED;
 	ddc_main_conf.RCF_FilterTaps    = DDC_RESERVED;
@@ -637,39 +607,20 @@ void USR_UDP_ReceiveCallback(struct pbuf *p, const uint32_t addr, const uint16_t
 	ip = toIP4(addr);
 	if (ip.IP4 == udp_ip.IP4)
 	{
+		HAL_NVIC_DisableIRQ(TIM1_CC_IRQn);
 		uint8_t *pptr = (uint8_t *)p->payload;
 		if (pptr[0] == 'L') HAL_GPIO_TogglePin(GPIOB, LED_Pin);
 		else if (pptr[0] == 'A') USR_DDC_UdpHandler(pptr);
 		else if (pptr[0] == 'D') USR_DAC_UdpHandler(pptr);
 		else if (pptr[0] == 'S') USR_SBUF_UdpHandler(pptr);
 		else if (pptr[0] == 'C') USR_CODER_UdpHandler(pptr);
-		else if (pptr[0] == 'c') USR_CODER_StateSend();
 		else if (pptr[0] == 'P') Pmod_UdpHandler(pptr);
 		else if (pptr[0] == 'R')
 			/* TODO */
 			/* Send DDC configuration to PC using UDP */
 			/* Make DDC configuration struct public */
 			__NOP();
-	}
-}
-
-/* @brief Timer DMA Input Capture mode callback */
-/* @brief Start another DMA transfer in Input Capture mode */
-/* @brief Send filled buffer */
-void HAL_TIM_IC_CaptureCallback(TIM_HandleTypeDef *htim)
-{
-	/* Timer1 Input Capture DMA transfer complete callback */
-	if (htim->Instance == htim1.Instance)
-	{
-		/* Start another DDC to STM32 DMA transfer */
-		HAL_TIM_IC_Start_DMA(&htim1, TIM_CHANNEL_4,
-							 (uint32_t *)(buffers[dbuf_index] + HEADER_SIZE), BUFFER_SIZE);
-		/* Send buffered DDC data to PC */
-		while (UDP_LOCK == USR_LOCKED) __NOP();
-		UDP_LOCK = USR_LOCKED;
-		USR_UDP_Send(UDP_SEND_PORT, (uint8_t *)buffers[prev_index], PACKET_SIZE);
-		prev_index = dbuf_index; dbuf_index++; if (dbuf_index == BUFFER_COUNT) dbuf_index = 0;
-		UDP_LOCK = USR_UNLOCKED;
+		HAL_NVIC_EnableIRQ(TIM1_CC_IRQn);
 	}
 }
 
@@ -682,28 +633,40 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
 	}
 
 	/* Pmod sync operation */
-	if ((GPIO_Pin == GPIO_PIN_0) && (setup_done == true))
+	if ((GPIO_Pin == GPIO_PIN_0))
 	{
 		/* Pmod stop signal */
 		if (HAL_GPIO_ReadPin(GPIOB, GPIO_PIN_0) == pmod_state)
 		{
-			/* Stop Input Capture DMA in Interrupt mode */
-			HAL_TIM_IC_Stop_DMA(&htim1, TIM_CHANNEL_4);
+			/* Stop DDC to STM32 Input Capture transfer in Interrupt mode */
+			HAL_TIM_IC_Stop_IT(&htim1, TIM_CHANNEL_4);
 
 			/* Send buffered DDC data to PC */
-			while (UDP_LOCK == USR_LOCKED) { __NOP(); }
-			UDP_LOCK = USR_LOCKED;
-			USR_UDP_Send(UDP_SEND_PORT,
-						 (uint8_t *)buffers[prev_index],
-						 ((HEADER_SIZE + (BUFFER_SIZE - __HAL_DMA_GET_COUNTER(&hdma_tim1_ch4_trig_com))) * 2));
-			UDP_LOCK = USR_UNLOCKED;
+			prev_index = dbuf_index;
+			dbuf_index++; if (dbuf_index == BUFFER_COUNT) dbuf_index = 0;
+			tmp_buffer_index = buffer_index; buffer_index = HEADER_SIZE;
+			if (tmp_buffer_index > (BUFFER_SIZE/2 + HEADER_SIZE))
+			{
+				USR_UDP_Send(UDP_SEND_PORT, (uint8_t *)buffers[prev_index], PACKET_SIZE);
+				if (tmp_buffer_index <= (BUFFER_SIZE+1))
+				{
+					buffers[prev_index][tmp_buffer_index] = FOOTER;
+					buffers[prev_index][tmp_buffer_index+1] = FOOTER;
+				}
+				USR_UDP_Send(UDP_SEND_PORT,
+							 (uint8_t *)(buffers[prev_index] + BUFFER_SIZE/2 + HEADER_SIZE),
+							 (tmp_buffer_index - BUFFER_SIZE/2) * 2);
+			}
+			else
+			{
+				USR_UDP_Send(UDP_SEND_PORT, (uint8_t *)buffers[prev_index], (tmp_buffer_index)*2);
+			}
 		}
 		/* Pmod start signal */
 		else
 		{
-			/* Start DDC to STM32 Input Capture DMA transfer */
-			HAL_TIM_IC_Start_DMA(&htim1, TIM_CHANNEL_4, (uint32_t *)(buffers[0] + HEADER_SIZE), BUFFER_SIZE);
-			dbuf_index = 1; prev_index = 0;
+			/* Start DDC to STM32 Input Capture transfer in Interrupt mode */
+			HAL_TIM_IC_Start_IT(&htim1, TIM_CHANNEL_4);
 		}
 	}
 }
@@ -718,7 +681,7 @@ void UDP_Buffer_Init()
 		for (j = 0; j < HEADER_SIZE; j++) { buffers[i][j] = HEADER; }
 
 		/* Insert buffer index in header */
-		buffers[i][0] = (i + 49);
+		// buffers[i][0] = (i + 49);
 
 		/* FOOTER */
 		for (j = 0; j < FOOTER_SIZE; j++) { buffers[i][HEADER_SIZE + BUFFER_SIZE + j] = FOOTER; }
@@ -782,15 +745,6 @@ void SW_Set(uint8_t mode)
 		HAL_GPIO_WritePin(GPIOB, SW_A_Pin, GPIO_PIN_RESET);
 		HAL_GPIO_WritePin(GPIOB, SW_B_Pin, GPIO_PIN_SET);
 	}
-}
-
-/* @brief Coder UDP responder */
-void USR_CODER_StateSend()
-{
-	USR_UDP_InsertPostDataCh('c', 0);
-	USR_UDP_InsertPostDataCh(((char)is_power_on + '0'), 1);
-	USR_UDP_InsertPostDataCh(((char)is_started + '0'), 2);
-	USR_UDP_InsertPostDataCh(((char)is_triggered + '0'), 3);
 }
 
 void Pmod_UdpHandler(uint8_t *udp_data)

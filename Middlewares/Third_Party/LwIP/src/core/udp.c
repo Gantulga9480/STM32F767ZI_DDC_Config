@@ -756,7 +756,7 @@ udp_sendto_if_src_chksum(struct udp_pcb *pcb, struct pbuf *p, const ip_addr_t *d
   if ((u16_t)(p->tot_len + UDP_HLEN) < p->tot_len) {
     return ERR_MEM;
   }
-  /* not enough space to add an UDP header to first pbuf in given p chain? USR_CHANGED from if (pbuf_add_header(p, UDP_HLEN)) */
+  /* not enough space to add an UDP header to first pbuf in given p chain? */
   if (pbuf_add_header(p, UDP_HLEN)) {
     /* allocate header in a separate new pbuf */
     q = pbuf_alloc(PBUF_IP, UDP_HLEN, PBUF_RAM);

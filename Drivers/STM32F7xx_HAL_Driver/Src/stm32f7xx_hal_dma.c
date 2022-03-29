@@ -459,15 +459,9 @@ HAL_StatusTypeDef HAL_DMA_Start_IT(DMA_HandleTypeDef *hdma, uint32_t SrcAddress,
   
   /* Check the parameters */
   assert_param(IS_DMA_BUFFER_SIZE(DataLength));
-
-  /* Process locked USR_ADDED */
-  __HAL_UNLOCK(hdma);
  
   /* Process locked */
   __HAL_LOCK(hdma);
-
-  /* USR_ADDED */
-  if (hdma->State == HAL_DMA_STATE_ABORT) hdma->State = HAL_DMA_STATE_READY;
   
   if(HAL_DMA_STATE_READY == hdma->State)
   {

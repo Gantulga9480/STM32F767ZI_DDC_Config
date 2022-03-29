@@ -8,7 +8,9 @@
 #include "main.h"
 #include "coder.h"
 #include "usr.h"
+#include "udp_server.h"
 
+extern TIM_HandleTypeDef htim1;
 extern TIM_HandleTypeDef htim2;
 extern TIM_HandleTypeDef htim3;
 
@@ -225,8 +227,8 @@ extern uint16_t *CODE_DATA;
 extern uint16_t CODE_LEN;
 
 uint8_t value, ch;
-bool is_power_on = false;
-bool is_started = false;
+bool is_power_on  = false;
+bool is_started   = false;
 bool is_triggered = false;
 
 void USR_CODER_Start()
@@ -238,7 +240,6 @@ void USR_CODER_Start()
 		USR_CODER_Long(START_3, START_3_D);
 		USR_CODER_Short(START_4, START_4_D);
 		USR_CODER_Long(START_5, START_5_D);
-		HAL_NVIC_EnableIRQ(TIM3_IRQn);
 		HAL_TIM_Base_Start_IT(&htim3);
 		is_started = true;
 	}
@@ -251,27 +252,22 @@ void USR_CODER_PowerOn()
 		USR_CODER_Long(POWER_ON_1, POWER_ON_1_D);
 		USR_CODER_Short(POWER_ON_2, POWER_ON_2_D);
 		is_power_on = true;
-		HAL_Delay(1);
 	}
-	HAL_GPIO_WritePin(GPIOB, LED_Pin, GPIO_PIN_SET);
 }
 
 void USR_CODER_PowerOff()
 {
 	if (is_power_on == true)
 	{
-		HAL_TIM_Base_Stop_IT(&htim3);
-		HAL_NVIC_DisableIRQ(TIM3_IRQn);
 		HAL_NVIC_DisableIRQ(EXTI0_IRQn);
-		HAL_NVIC_DisableIRQ(DMA2_Stream4_IRQn);
+		HAL_TIM_Base_Stop_IT(&htim3);
+		HAL_TIM_IC_Stop_IT(&htim1, TIM_CHANNEL_4);
 		USR_CODER_Long(POWER_OFF_1, POWER_OFF_1_D);
 		USR_CODER_Short(POWER_OFF_2, POWER_OFF_2_D);
 		is_power_on = false;
 		is_triggered = false;
 		is_started = false;
-		HAL_Delay(1);
 	}
-	HAL_GPIO_WritePin(GPIOB, LED_Pin, GPIO_PIN_SET);
 }
 
 void USR_CODER_TriggerOn()
@@ -280,7 +276,6 @@ void USR_CODER_TriggerOn()
 	{
 		HAL_NVIC_DisableIRQ(TIM3_IRQn);
 		HAL_NVIC_EnableIRQ(EXTI0_IRQn);
-		HAL_NVIC_EnableIRQ(DMA2_Stream4_IRQn);
 		USR_CODER_Long(TRIGGER_ON_1, TRIGGER_ON_1_D);
 		USR_CODER_Short(TRIGGER_ON_2, TRIGGER_ON_2_D);
 		HAL_NVIC_EnableIRQ(TIM3_IRQn);
@@ -294,7 +289,7 @@ void USR_CODER_TriggerOff()
 	{
 		HAL_NVIC_DisableIRQ(TIM3_IRQn);
 		HAL_NVIC_DisableIRQ(EXTI0_IRQn);
-		HAL_NVIC_DisableIRQ(DMA2_Stream4_IRQn);
+		HAL_TIM_IC_Stop_IT(&htim1, TIM_CHANNEL_4);
 		USR_CODER_Long(TRIGGER_OFF_1, TRIGGER_OFF_1_D);
 		USR_CODER_Short(TRIGGER_OFF_2, TRIGGER_OFF_2_D);
 		HAL_NVIC_EnableIRQ(TIM3_IRQn);
@@ -324,6 +319,15 @@ void USR_CODER_ChannelFreq(uint8_t channel, uint8_t index)
 	}
 }
 
+/* @brief Coder UDP responder */
+void USR_CODER_StateSend()
+{
+	USR_UDP_InsertPostDataCh('c', 0);
+	USR_UDP_InsertPostDataCh(((char)is_power_on + '0'), 1);
+	USR_UDP_InsertPostDataCh(((char)is_started + '0'), 2);
+	USR_UDP_InsertPostDataCh(((char)is_triggered + '0'), 3);
+}
+
 void USR_CODER_Short(const uint16_t *code, uint16_t length)
 {
 	CODE_LEN = length;
@@ -345,6 +349,7 @@ void USR_CODER_UdpHandler(uint8_t *udp_data)
 	else if (udp_data[1] == 'S') { USR_CODER_Start(); }
 	else if (udp_data[1] == 'T') { USR_CODER_TriggerOn(); }
 	else if (udp_data[1] == 't') { USR_CODER_TriggerOff(); }
+	else if (udp_data[1] == 'c') { USR_CODER_StateSend(); }
 	else if (udp_data[1] == 'C')
 	{
 		value = (udp_data[3] - '0') * 100 + (udp_data[4] - '0') * 10 + (udp_data[5] - '0');
@@ -352,7 +357,7 @@ void USR_CODER_UdpHandler(uint8_t *udp_data)
 	}
 	else if (udp_data[1] == 'F')
 	{
-		value = (udp_data[3] - '0') * 100 + (udp_data[4] - '0') * 10 + (udp_data[5] - '0');
+		value = (udp_data[3] - '0') * 10 + (udp_data[4] - '0');
 		ch = udp_data[2] - '0';
 		USR_CODER_ChannelFreq(ch, value);
 	}

@@ -22,6 +22,8 @@
 #include "stm32f7xx_it.h"
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
+#include "defs.h"
+#include "usr.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -54,10 +56,14 @@
 uint16_t code_index = 0;
 uint16_t *CODE_DATA = 0;
 uint16_t CODE_LEN = 0;
+
+extern uint16_t buffer_index;
+extern uint8_t dbuf_index;
+extern int16_t *buffers[2];
 /* USER CODE END 0 */
 
 /* External variables --------------------------------------------------------*/
-extern DMA_HandleTypeDef hdma_tim1_ch4_trig_com;
+extern TIM_HandleTypeDef htim1;
 extern TIM_HandleTypeDef htim2;
 extern TIM_HandleTypeDef htim3;
 /* USER CODE BEGIN EV */
@@ -231,6 +237,21 @@ void EXTI9_5_IRQHandler(void)
 }
 
 /**
+  * @brief This function handles TIM1 capture compare interrupt.
+  */
+void TIM1_CC_IRQHandler(void)
+{
+  /* USER CODE BEGIN TIM1_CC_IRQn 0 */
+  __HAL_TIM_CLEAR_IT(&htim1, TIM_IT_CC4);
+  buffers[dbuf_index][buffer_index] = (int16_t)GPIOD->IDR;
+  buffer_index++;
+  /* USER CODE END TIM1_CC_IRQn 0 */
+  /* USER CODE BEGIN TIM1_CC_IRQn 1 */
+
+  /* USER CODE END TIM1_CC_IRQn 1 */
+}
+
+/**
   * @brief This function handles TIM2 global interrupt.
   */
 void TIM2_IRQHandler(void)
@@ -245,7 +266,7 @@ void TIM2_IRQHandler(void)
 
   /* USR_REMOVED HAL_TIM_IRQHandler(&htim2) */
   /* USER CODE END TIM2_IRQn 0 */
-  // HAL_TIM_IRQHandler(&htim2);
+
   /* USER CODE BEGIN TIM2_IRQn 1 */
 
   /* USER CODE END TIM2_IRQn 1 */
@@ -263,24 +284,10 @@ void TIM3_IRQHandler(void)
   HAL_TIM_PeriodElapsedCallback(&htim3);
   /* USR_REMOVED HAL_TIM_IRQHandler(&htim3) */
   /* USER CODE END TIM3_IRQn 0 */
-  // HAL_TIM_IRQHandler(&htim3);
+
   /* USER CODE BEGIN TIM3_IRQn 1 */
 
   /* USER CODE END TIM3_IRQn 1 */
-}
-
-/**
-  * @brief This function handles DMA2 stream4 global interrupt.
-  */
-void DMA2_Stream4_IRQHandler(void)
-{
-  /* USER CODE BEGIN DMA2_Stream4_IRQn 0 */
-
-  /* USER CODE END DMA2_Stream4_IRQn 0 */
-  HAL_DMA_IRQHandler(&hdma_tim1_ch4_trig_com);
-  /* USER CODE BEGIN DMA2_Stream4_IRQn 1 */
-
-  /* USER CODE END DMA2_Stream4_IRQn 1 */
 }
 
 /* USER CODE BEGIN 1 */
