@@ -56,7 +56,7 @@ TIM_HandleTypeDef htim8;
 
 /* USER CODE BEGIN PV */
 struct IP4_Container udp_ip = {10, 3, 4, 28}; // 10.3.4.28:UDP_SEND_PORT
-GPIO_PinState pmod_state = GPIO_PIN_RESET;
+GPIO_PinState pmod_state = GPIO_PIN_SET;
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -636,7 +636,7 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
 	if ((GPIO_Pin == GPIO_PIN_0))
 	{
 		/* Pmod stop signal */
-		if (HAL_GPIO_ReadPin(GPIOB, GPIO_PIN_0) == pmod_state)
+		if (HAL_GPIO_ReadPin(GPIOB, GPIO_PIN_0) != pmod_state)
 		{
 			/* Stop DDC to STM32 Input Capture transfer in Interrupt mode */
 			HAL_TIM_IC_Stop_IT(&htim1, TIM_CHANNEL_4);
