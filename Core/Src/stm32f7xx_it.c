@@ -66,6 +66,7 @@ extern int16_t *buffers[2];
 extern TIM_HandleTypeDef htim1;
 extern TIM_HandleTypeDef htim2;
 extern TIM_HandleTypeDef htim3;
+extern UART_HandleTypeDef huart1;
 /* USER CODE BEGIN EV */
 
 /* USER CODE END EV */
@@ -266,7 +267,6 @@ void TIM2_IRQHandler(void)
 
   /* USR_REMOVED HAL_TIM_IRQHandler(&htim2) */
   /* USER CODE END TIM2_IRQn 0 */
-
   /* USER CODE BEGIN TIM2_IRQn 1 */
 
   /* USER CODE END TIM2_IRQn 1 */
@@ -284,10 +284,23 @@ void TIM3_IRQHandler(void)
   HAL_TIM_PeriodElapsedCallback(&htim3);
   /* USR_REMOVED HAL_TIM_IRQHandler(&htim3) */
   /* USER CODE END TIM3_IRQn 0 */
-
   /* USER CODE BEGIN TIM3_IRQn 1 */
 
   /* USER CODE END TIM3_IRQn 1 */
+}
+
+/**
+  * @brief This function handles USART1 global interrupt.
+  */
+void USART1_IRQHandler(void)
+{
+  /* USER CODE BEGIN USART1_IRQn 0 */
+
+  /* USER CODE END USART1_IRQn 0 */
+  HAL_UART_IRQHandler(&huart1);
+  /* USER CODE BEGIN USART1_IRQn 1 */
+
+  /* USER CODE END USART1_IRQn 1 */
 }
 
 /* USER CODE BEGIN 1 */
