@@ -646,6 +646,7 @@ void USR_UDP_ReceiveCallback(struct pbuf *p, const uint32_t addr, const uint16_t
 	ip = toIP4(addr);
 	if (ip.IP4 == udp_ip.IP4)
 	{
+		/* Disable DDC data available interrupt */
 		HAL_NVIC_DisableIRQ(TIM1_CC_IRQn);
 		uint8_t *pptr = (uint8_t *)p->payload;
 		if (pptr[0] == 'L') HAL_GPIO_TogglePin(GPIOB, LED_Pin);
@@ -659,20 +660,15 @@ void USR_UDP_ReceiveCallback(struct pbuf *p, const uint32_t addr, const uint16_t
 			/* Send DDC configuration to PC using UDP */
 			/* Make DDC configuration struct public */
 			__NOP();
+		/* Enable DDC data available interrupt */
 		HAL_NVIC_EnableIRQ(TIM1_CC_IRQn);
 	}
 }
 
 void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
 {
-	/* DDC ready interrupt */
-	if (GPIO_Pin == GPIO_PIN_8)
-	{
-		DDC_READY_FLAG = 1;
-	}
-
 	/* Pmod sync operation */
-	if ((GPIO_Pin == GPIO_PIN_0))
+	if (GPIO_Pin == GPIO_PIN_0)
 	{
 		/* Pmod stop signal */
 		if (HAL_GPIO_ReadPin(GPIOB, GPIO_PIN_0) != pmod_state)
@@ -710,7 +706,7 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
 	}
 }
 
-/* @brief DDC data buffer, Insert header footer */
+/* @brief DDC data buffer init, Insert header footer */
 void UDP_Buffer_Init()
 {
 	int8_t i = 0, j = 0;
@@ -734,19 +730,21 @@ void PHY_Init()
 	{
 		/* Reset PHY by reseting PHY RESET pin*/
 		HAL_GPIO_WritePin(PHY_RESET_GPIO_Port, PHY_RESET_Pin, GPIO_PIN_RESET);
+		/* Toggle LED indicator to see PHY init process */
 		HAL_GPIO_WritePin(GPIOB, LED_Pin, GPIO_PIN_SET);
 		/* Held low for 100ms */
 		HAL_Delay(100);
-		/* Release PHY RESET pin by setting the pin */
+		/* Release PHY RESET pin by setting the PHY RESET pin */
 		HAL_GPIO_WritePin(PHY_RESET_GPIO_Port, PHY_RESET_Pin, GPIO_PIN_SET);
+		/* Toggle LED indicator to see PHY init process */
 		HAL_GPIO_WritePin(GPIOB, LED_Pin, GPIO_PIN_RESET);
 		/* Wait for PHY to start */
 		HAL_Delay(3000);
 	}
 }
 
-/* @brief Checks PHY status by checking PHY Green LED state for 2 seconds
- * @brief Samples PHY Green LED Pin 8 times per second
+/* @brief Checks PHY status by checking LAN Green LED state for 2 seconds
+ * @brief Samples LAN Green LED Pin 8 times per second
  * @brief If Low detected return error */
 USR_StatusTypeDef PHY_Status_Check()
 {
@@ -755,7 +753,7 @@ USR_StatusTypeDef PHY_Status_Check()
 	{
 		if (HAL_GPIO_ReadPin(PHY_GREEN_LED_GPIO_Port, PHY_GREEN_LED_Pin))
 		{
-			/* Pass if green LED high*/
+			/* Pass if LAN green LED high*/
 			HAL_Delay(125);
 		}
 		else
@@ -772,12 +770,14 @@ USR_StatusTypeDef PHY_Status_Check()
  * @brief Enable/Disable external 10.7MHz OSC */
 void SW_Set(uint8_t mode)
 {
+	/* Internal OSC */
 	if (mode == SW_INT)
 	{
 		HAL_GPIO_WritePin(GPIOA, OSC_EN_Pin, GPIO_PIN_SET);
 		HAL_GPIO_WritePin(GPIOB, SW_A_Pin, GPIO_PIN_SET);
 		HAL_GPIO_WritePin(GPIOB, SW_B_Pin, GPIO_PIN_RESET);
 	}
+	/* External OSC */
 	else if (mode == SW_EXT)
 	{
 		HAL_GPIO_WritePin(GPIOA, OSC_EN_Pin, GPIO_PIN_RESET);

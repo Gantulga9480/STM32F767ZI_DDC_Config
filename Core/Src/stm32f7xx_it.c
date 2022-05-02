@@ -60,6 +60,7 @@ uint16_t CODE_LEN = 0;
 extern uint16_t buffer_index;
 extern uint8_t dbuf_index;
 extern int16_t *buffers[2];
+extern uint8_t DDC_READY_FLAG;
 /* USER CODE END 0 */
 
 /* External variables --------------------------------------------------------*/
@@ -229,9 +230,9 @@ void EXTI0_IRQHandler(void)
 void EXTI9_5_IRQHandler(void)
 {
   /* USER CODE BEGIN EXTI9_5_IRQn 0 */
-
+  /* DDC ready interrupt */
+  DDC_READY_FLAG = 1;
   /* USER CODE END EXTI9_5_IRQn 0 */
-  HAL_GPIO_EXTI_IRQHandler(DDC1_RDY_Pin);
   /* USER CODE BEGIN EXTI9_5_IRQn 1 */
 
   /* USER CODE END EXTI9_5_IRQn 1 */

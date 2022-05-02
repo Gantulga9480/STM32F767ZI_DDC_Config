@@ -84,8 +84,6 @@ typedef struct
 	uint8_t  FIR;				 // FIR using
 } DDC_ConfigTypeDef;
 
-uint8_t DDC_READY_FLAG;
-
 void USR_DDC_Config_Init(DDC_ConfigTypeDef conf);
 void USR_DDC_UdpHandler(uint8_t *udp_data);
 
