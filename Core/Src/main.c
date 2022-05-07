@@ -27,7 +27,7 @@
 #include "sbuf.h"
 #include "ddc.h"
 #include "dac.h"
-#include "coder.h"
+// #include "coder.h"
 #include "defs.h"
 #include "vars.h"
 /* USER CODE END Includes */
@@ -55,10 +55,14 @@ TIM_HandleTypeDef htim3;
 TIM_HandleTypeDef htim8;
 
 UART_HandleTypeDef huart1;
+DMA_HandleTypeDef hdma_usart1_rx;
 
 /* USER CODE BEGIN PV */
 struct IP4_Container udp_ip = {10, 3, 4, 28}; // 10.3.4.28:UDP_SEND_PORT
 GPIO_PinState pmod_state = GPIO_PIN_SET;
+uint8_t rx_buffer[5];
+uint8_t serial_data_index = 0;
+uint8_t serial_init = 0;
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -67,15 +71,54 @@ static void MX_GPIO_Init(void);
 static void MX_TIM1_Init(void);
 static void MX_TIM8_Init(void);
 static void MX_TIM2_Init(void);
+static void MX_DMA_Init(void);
 static void MX_TIM3_Init(void);
 static void MX_USART1_UART_Init(void);
 /* USER CODE BEGIN PFP */
 void UDP_Buffer_Init();
 void USR_DDC_Init();
 void SW_Set(uint8_t mode);
-void Pmod_UdpHandler(uint8_t *udp_data);
+void USR_Pmod_UdpHandler(uint8_t *udp_data);
 void PHY_Init();
 USR_StatusTypeDef PHY_Status_Check();
+void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
+{
+	if (rx_buffer[0] == 0x83)
+	{
+		DDC_Buffer1[2] = (rx_buffer[1] << 8) + rx_buffer[0];
+		DDC_Buffer2[2] = (rx_buffer[1] << 8) + rx_buffer[0];
+		DDC_Buffer1[3] = (rx_buffer[3] << 8) + rx_buffer[2];
+		DDC_Buffer2[3] = (rx_buffer[3] << 8) + rx_buffer[2];
+		DDC_Buffer1[4] = rx_buffer[4];
+		DDC_Buffer2[4] = rx_buffer[4];
+	}
+	else
+	{
+		HAL_UART_Abort(&huart1);
+		if (serial_init == 0)
+		{
+			uint8_t i = 1;
+			for (; i<5; i++)
+			{
+				if (rx_buffer[i] == 0x83)
+				{
+					serial_data_index = i;
+					break;
+				}
+			}
+			serial_init = 1;
+			if (serial_data_index != 0)
+			{
+				HAL_UART_Receive_DMA(&huart1, (uint8_t*)rx_buffer, serial_data_index);
+			}
+		}
+		else
+		{
+			serial_init = 0;
+			HAL_UART_Receive_DMA(&huart1, (uint8_t*)rx_buffer, 5);
+		}
+	}
+}
 /* USER CODE END PFP */
 
 /* Private user code ---------------------------------------------------------*/
@@ -116,6 +159,7 @@ int main(void)
   MX_LWIP_Init();
   MX_TIM2_Init();
   MX_TIM3_Init();
+  MX_DMA_Init();
   MX_USART1_UART_Init();
   /* USER CODE BEGIN 2 */
   /* ---------------------------------------------------- SETUP START */
@@ -134,7 +178,7 @@ int main(void)
    * SW_INT for internal OSC
    * SW_EXT for external OSC
    * */
-  SW_Set(SW_INT);
+  SW_Set(SW_EXT);
 
   USR_DDC_Init();
   /* ---------------------------------------------------- DDC END */
@@ -147,7 +191,10 @@ int main(void)
   USR_SBUF_Init();
   /* ---------------------------------------------------- SBUF END */
 
+  HAL_Delay(1000);
   HAL_GPIO_WritePin(GPIOB, LED_Pin, GPIO_PIN_SET);
+  HAL_UART_Receive_DMA(&huart1, (uint8_t*)rx_buffer, 5);
+
   HAL_NVIC_EnableIRQ(EXTI0_IRQn);  // Pmod enable
   /* ---------------------------------------------------- SETUP END */
 
@@ -469,6 +516,22 @@ static void MX_USART1_UART_Init(void)
 }
 
 /**
+  * Enable DMA controller clock
+  */
+static void MX_DMA_Init(void)
+{
+
+  /* DMA controller clock enable */
+  __HAL_RCC_DMA2_CLK_ENABLE();
+
+  /* DMA interrupt init */
+  /* DMA2_Stream2_IRQn interrupt configuration */
+  HAL_NVIC_SetPriority(DMA2_Stream2_IRQn, 1, 0);
+  HAL_NVIC_EnableIRQ(DMA2_Stream2_IRQn);
+
+}
+
+/**
   * @brief GPIO Initialization Function
   * @param None
   * @retval None
@@ -605,7 +668,7 @@ static void MX_GPIO_Init(void)
   /* EXTI interrupt init*/
   HAL_NVIC_SetPriority(EXTI0_IRQn, 1, 0);
 
-  HAL_NVIC_SetPriority(EXTI9_5_IRQn, 2, 0);
+  HAL_NVIC_SetPriority(EXTI9_5_IRQn, 1, 0);
   HAL_NVIC_EnableIRQ(EXTI9_5_IRQn);
 
 }
@@ -653,8 +716,8 @@ void USR_UDP_ReceiveCallback(struct pbuf *p, const uint32_t addr, const uint16_t
 		else if (pptr[0] == 'A') USR_DDC_UdpHandler(pptr);
 		else if (pptr[0] == 'D') USR_DAC_UdpHandler(pptr);
 		else if (pptr[0] == 'S') USR_SBUF_UdpHandler(pptr);
-		else if (pptr[0] == 'C') USR_CODER_UdpHandler(pptr);
-		else if (pptr[0] == 'P') Pmod_UdpHandler(pptr);
+		// else if (pptr[0] == 'C') USR_CODER_UdpHandler(pptr);
+		else if (pptr[0] == 'P') USR_Pmod_UdpHandler(pptr);
 		else if (pptr[0] == 'R')
 			/* TODO */
 			/* Send DDC configuration to PC using UDP */
@@ -679,7 +742,7 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
 			/* Send buffered DDC data to PC */
 			prev_index = dbuf_index;
 			dbuf_index++; if (dbuf_index == BUFFER_COUNT) dbuf_index = 0;
-			tmp_buffer_index = buffer_index; buffer_index = HEADER_SIZE;
+			tmp_buffer_index = buffer_index; buffer_index = HEADER_SIZE + 3;
 			if (tmp_buffer_index > (BUFFER_SIZE/2 + HEADER_SIZE))
 			{
 				USR_UDP_Send(UDP_SEND_PORT, (uint8_t *)buffers[prev_index], PACKET_SIZE);
@@ -766,8 +829,8 @@ USR_StatusTypeDef PHY_Status_Check()
 	return USR_OK;
 }
 
-/* @brief Configures external signal switch mode
- * @brief Enable/Disable external 10.7MHz OSC */
+/* @brief Configures signal switch mode
+ * @brief Enable/Disable internal 10.7MHz OSC */
 void SW_Set(uint8_t mode)
 {
 	/* Internal OSC */
@@ -786,7 +849,7 @@ void SW_Set(uint8_t mode)
 	}
 }
 
-void Pmod_UdpHandler(uint8_t *udp_data)
+void USR_Pmod_UdpHandler(uint8_t *udp_data)
 {
 	if (udp_data[1] == '1')
 		pmod_state = GPIO_PIN_SET;

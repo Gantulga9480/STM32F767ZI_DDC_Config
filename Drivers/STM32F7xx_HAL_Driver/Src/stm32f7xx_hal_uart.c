@@ -3291,8 +3291,8 @@ HAL_StatusTypeDef UART_Start_Receive_DMA(UART_HandleTypeDef *huart, uint8_t *pDa
 
   if (huart->hdmarx != NULL)
   {
-    /* Set the UART DMA transfer complete callback */
-    huart->hdmarx->XferCpltCallback = UART_DMAReceiveCplt;
+	/* Set the UART DMA transfer complete callback */
+	huart->hdmarx->XferCpltCallback = UART_DMAReceiveCplt;
 
     /* Set the UART DMA Half transfer complete callback */
     huart->hdmarx->XferHalfCpltCallback = UART_DMARxHalfCplt;
