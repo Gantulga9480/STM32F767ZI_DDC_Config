@@ -193,9 +193,11 @@ int main(void)
 
   HAL_Delay(1000);
   HAL_GPIO_WritePin(GPIOB, LED_Pin, GPIO_PIN_SET);
-  HAL_UART_Receive_DMA(&huart1, (uint8_t*)rx_buffer, 5);
+  // HAL_UART_Receive_DMA(&huart1, (uint8_t*)rx_buffer, 5);
 
-  HAL_NVIC_EnableIRQ(EXTI0_IRQn);  // Pmod enable
+  // HAL_NVIC_EnableIRQ(EXTI0_IRQn);  // Pmod enable
+
+  HAL_TIM_IC_Start_IT(&htim1, TIM_CHANNEL_4);
   /* ---------------------------------------------------- SETUP END */
 
   /* USER CODE END 2 */
@@ -759,6 +761,8 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
 			{
 				USR_UDP_Send(UDP_SEND_PORT, (uint8_t *)buffers[prev_index], (tmp_buffer_index)*2);
 			}
+			// HAL_Delay(1);
+			HAL_TIM_IC_Start_IT(&htim1, TIM_CHANNEL_4);
 		}
 		/* Pmod start signal */
 		else

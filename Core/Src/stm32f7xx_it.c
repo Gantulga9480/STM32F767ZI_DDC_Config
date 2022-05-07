@@ -252,6 +252,10 @@ void TIM1_CC_IRQHandler(void)
   __HAL_TIM_CLEAR_IT(&htim1, TIM_IT_CC4);
   buffers[dbuf_index][buffer_index] = (int16_t)GPIOD->IDR;
   buffer_index++;
+  if (buffer_index == 500)
+  {
+	  HAL_GPIO_EXTI_Callback(GPIO_PIN_0);
+  }
   /* USER CODE END TIM1_CC_IRQn 0 */
   /* USER CODE BEGIN TIM1_CC_IRQn 1 */
 
