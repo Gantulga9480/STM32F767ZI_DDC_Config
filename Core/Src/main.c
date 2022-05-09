@@ -178,7 +178,7 @@ int main(void)
    * SW_INT for internal OSC
    * SW_EXT for external OSC
    * */
-  SW_Set(SW_EXT);
+  SW_Set(SW_INT);
 
   USR_DDC_Init();
   /* ---------------------------------------------------- DDC END */
@@ -732,12 +732,12 @@ void USR_UDP_ReceiveCallback(struct pbuf *p, const uint32_t addr, const uint16_t
 
 void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
 {
-	/* Pmod sync operation */
-	if (GPIO_Pin == GPIO_PIN_0)
-	{
-		/* Pmod stop signal */
-		if (HAL_GPIO_ReadPin(GPIOB, GPIO_PIN_0) != pmod_state)
-		{
+//	/* Pmod sync operation */
+//	if (GPIO_Pin == GPIO_PIN_0)
+//	{
+//		/* Pmod stop signal */
+//		if (HAL_GPIO_ReadPin(GPIOB, GPIO_PIN_0) != pmod_state)
+//		{
 			/* Stop DDC to STM32 Input Capture transfer in Interrupt mode */
 			HAL_TIM_IC_Stop_IT(&htim1, TIM_CHANNEL_4);
 
@@ -761,16 +761,15 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
 			{
 				USR_UDP_Send(UDP_SEND_PORT, (uint8_t *)buffers[prev_index], (tmp_buffer_index)*2);
 			}
-			// HAL_Delay(1);
 			HAL_TIM_IC_Start_IT(&htim1, TIM_CHANNEL_4);
-		}
-		/* Pmod start signal */
-		else
-		{
-			/* Start DDC to STM32 Input Capture transfer in Interrupt mode */
-			HAL_TIM_IC_Start_IT(&htim1, TIM_CHANNEL_4);
-		}
-	}
+//		}
+//		/* Pmod start signal */
+//		else
+//		{
+//			/* Start DDC to STM32 Input Capture transfer in Interrupt mode */
+//			HAL_TIM_IC_Start_IT(&htim1, TIM_CHANNEL_4);
+//		}
+//	}
 }
 
 /* @brief DDC data buffer init, Insert header footer */

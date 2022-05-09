@@ -249,10 +249,10 @@ void EXTI9_5_IRQHandler(void)
 void TIM1_CC_IRQHandler(void)
 {
   /* USER CODE BEGIN TIM1_CC_IRQn 0 */
-  __HAL_TIM_CLEAR_IT(&htim1, TIM_IT_CC4);
   buffers[dbuf_index][buffer_index] = (int16_t)GPIOD->IDR;
+  __HAL_TIM_CLEAR_IT(&htim1, TIM_IT_CC4);
   buffer_index++;
-  if (buffer_index == 500)
+  if (buffer_index == 800)
   {
 	  HAL_GPIO_EXTI_Callback(GPIO_PIN_0);
   }
