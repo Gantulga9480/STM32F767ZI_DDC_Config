@@ -67,6 +67,7 @@ extern uint8_t DDC_READY_FLAG;
 extern TIM_HandleTypeDef htim1;
 extern TIM_HandleTypeDef htim2;
 extern TIM_HandleTypeDef htim3;
+extern TIM_HandleTypeDef htim4;
 extern DMA_HandleTypeDef hdma_usart1_rx;
 extern UART_HandleTypeDef huart1;
 /* USER CODE BEGIN EV */
@@ -237,6 +238,11 @@ void EXTI9_5_IRQHandler(void)
 	__HAL_GPIO_EXTI_CLEAR_IT(DDC1_RDY_Pin);
     DDC_READY_FLAG = 1;
   }
+  if ((EXTI->PR & DDC2_RDY_Pin) != RESET)
+  {
+	__HAL_GPIO_EXTI_CLEAR_IT(DDC2_RDY_Pin);
+    DDC_READY_FLAG = 1;
+  }
   /* USER CODE END EXTI9_5_IRQn 0 */
   /* USER CODE BEGIN EXTI9_5_IRQn 1 */
 
@@ -293,6 +299,22 @@ void TIM3_IRQHandler(void)
   /* USER CODE BEGIN TIM3_IRQn 1 */
 
   /* USER CODE END TIM3_IRQn 1 */
+}
+
+/**
+  * @brief This function handles TIM4 global interrupt.
+  */
+void TIM4_IRQHandler(void)
+{
+  /* USER CODE BEGIN TIM4_IRQn 0 */
+  __HAL_TIM_CLEAR_IT(&htim4, TIM_IT_CC4);
+  buffers[dbuf_index][buffer_index] = (int16_t)GPIOE->IDR;
+  buffer_index++;
+  /* USER CODE END TIM4_IRQn 0 */
+  HAL_TIM_IRQHandler(&htim4);
+  /* USER CODE BEGIN TIM4_IRQn 1 */
+
+  /* USER CODE END TIM4_IRQn 1 */
 }
 
 /**

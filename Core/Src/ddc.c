@@ -155,13 +155,14 @@ uint8_t uPort_write(uint8_t address, uint8_t data)
 	temp = address;
 	temp = temp << 10;
 	temp = temp & 0b0001110000000000;
-	GPIOC -> ODR &= 0b1110001111111111;
-	GPIOC -> ODR |= temp;
-	GPIOG -> ODR &= 0xFF00;
-	GPIOG -> ODR |= data;
+	GPIOC->ODR &= 0b1110001111111111;
+	GPIOC->ODR |= temp;
+	GPIOG->ODR &= 0xFF00;
+	GPIOG->ODR |= data;
+	// Chip select operation, Active low
 	HAL_GPIO_WritePin(GPIOC, DDC1_CS_Pin, GPIO_PIN_RESET);
 	HAL_GPIO_WritePin(GPIOG, DDC_WR_Pin, GPIO_PIN_RESET);
-	while(DDC_READY_FLAG == 0 && i > 0)
+	while((DDC_READY_FLAG == 0) && (i > 0))
 	{
 		i--;
 	}
@@ -169,6 +170,7 @@ uint8_t uPort_write(uint8_t address, uint8_t data)
 		result = 1;
 	else
 		result = 0;
+	// Chip de-select operation.
 	HAL_GPIO_WritePin(GPIOG, DDC_WR_Pin, GPIO_PIN_SET);
 	HAL_GPIO_WritePin(GPIOC, DDC1_CS_Pin, GPIO_PIN_SET);
 	return result;

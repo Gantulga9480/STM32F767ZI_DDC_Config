@@ -59,6 +59,16 @@ void Error_Handler(void);
 /* USER CODE END EFP */
 
 /* Private defines -----------------------------------------------------------*/
+#define DDC2_PD2_Pin GPIO_PIN_2
+#define DDC2_PD2_GPIO_Port GPIOE
+#define DDC2_PD3_Pin GPIO_PIN_3
+#define DDC2_PD3_GPIO_Port GPIOE
+#define DDC2_PD4_Pin GPIO_PIN_4
+#define DDC2_PD4_GPIO_Port GPIOE
+#define DDC2_PD5_Pin GPIO_PIN_5
+#define DDC2_PD5_GPIO_Port GPIOE
+#define DDC2_PD6_Pin GPIO_PIN_6
+#define DDC2_PD6_GPIO_Port GPIOE
 #define USER_BTN_Pin GPIO_PIN_13
 #define USER_BTN_GPIO_Port GPIOC
 #define PAR_OUT0_Pin GPIO_PIN_0
@@ -109,6 +119,24 @@ void Error_Handler(void);
 #define DDC_CD0_GPIO_Port GPIOG
 #define DDC_CD1_Pin GPIO_PIN_1
 #define DDC_CD1_GPIO_Port GPIOG
+#define DDC2_PD7_Pin GPIO_PIN_7
+#define DDC2_PD7_GPIO_Port GPIOE
+#define DDC2_PD8_Pin GPIO_PIN_8
+#define DDC2_PD8_GPIO_Port GPIOE
+#define DDC2_PD9_Pin GPIO_PIN_9
+#define DDC2_PD9_GPIO_Port GPIOE
+#define DDC2_PD10_Pin GPIO_PIN_10
+#define DDC2_PD10_GPIO_Port GPIOE
+#define DDC2_PD11_Pin GPIO_PIN_11
+#define DDC2_PD11_GPIO_Port GPIOE
+#define DDC2_PD12_Pin GPIO_PIN_12
+#define DDC2_PD12_GPIO_Port GPIOE
+#define DDC2_PD13_Pin GPIO_PIN_13
+#define DDC2_PD13_GPIO_Port GPIOE
+#define DDC2_PD14_Pin GPIO_PIN_14
+#define DDC2_PD14_GPIO_Port GPIOE
+#define DDC2_PD15_Pin GPIO_PIN_15
+#define DDC2_PD15_GPIO_Port GPIOE
 #define SW_B_Pin GPIO_PIN_11
 #define SW_B_GPIO_Port GPIOB
 #define SW_A_Pin GPIO_PIN_12
@@ -152,6 +180,8 @@ void Error_Handler(void);
 #define DDC1_RDY_EXTI_IRQn EXTI9_5_IRQn
 #define DDC1_SYNC_NCO_Pin GPIO_PIN_9
 #define DDC1_SYNC_NCO_GPIO_Port GPIOA
+#define DDC2_CS_Pin GPIO_PIN_12
+#define DDC2_CS_GPIO_Port GPIOA
 #define DDC_A0_Pin GPIO_PIN_10
 #define DDC_A0_GPIO_Port GPIOC
 #define DDC_A1_Pin GPIO_PIN_11
@@ -184,6 +214,17 @@ void Error_Handler(void);
 #define PHY_GREEN_LED_GPIO_Port GPIOG
 #define LED_Pin GPIO_PIN_3
 #define LED_GPIO_Port GPIOB
+#define DDC2_DV_Pin GPIO_PIN_4
+#define DDC2_DV_GPIO_Port GPIOB
+#define DDC2_RDY_Pin GPIO_PIN_5
+#define DDC2_RDY_GPIO_Port GPIOB
+#define DDC2_RDY_EXTI_IRQn EXTI9_5_IRQn
+#define DDC2_RST_Pin GPIO_PIN_7
+#define DDC2_RST_GPIO_Port GPIOB
+#define DDC2_PD0_Pin GPIO_PIN_0
+#define DDC2_PD0_GPIO_Port GPIOE
+#define DDC2_PD1_Pin GPIO_PIN_1
+#define DDC2_PD1_GPIO_Port GPIOE
 /* USER CODE BEGIN Private defines */
 #define CODER_PORT GPIOF
 /* USER CODE END Private defines */
