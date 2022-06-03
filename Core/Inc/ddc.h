@@ -44,6 +44,18 @@
 #define DDC_RCF_ADDRESS_OFFSET  0x30B
 #define DDC_RCF_FILTER_TAPS     0x30C
 
+// #define __DDC_ONE__
+// #define __DDC_TWO__
+#define __DDC_BOTH__
+
+#if (defined(__DDC_ONE__) || defined(__DDC_TWO__)) && defined(__DDC_BOTH__)
+#error DDC macro definition error. Select only one of (__DDC_ONE__, __DDC_TWO__, __DDC_BOTH__)
+#endif
+
+#if (defined(__DDC_ONE__) && defined(__DDC_TWO__))
+#error DDC macro definition error. Select only one of (__DDC_ONE__, __DDC_TWO__, __DDC_BOTH__)
+#endif
+
 /*
  * Coefficients 5MHz
  * 500k      - 0x001999999A - NCO

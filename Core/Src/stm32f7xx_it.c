@@ -24,6 +24,7 @@
 /* USER CODE BEGIN Includes */
 #include "defs.h"
 #include "usr.h"
+#include "ddc.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -56,10 +57,13 @@
 uint16_t code_index = 0;
 uint16_t *CODE_DATA = 0;
 uint16_t CODE_LEN = 0;
+uint8_t pmod_wait_count = 0;
+bool pmod_ok = false;
 
 extern uint16_t buffer_index;
 extern uint8_t dbuf_index;
-extern int16_t *buffers[2];
+extern int16_t *buffers1[2];
+extern int16_t *buffers2[2];
 extern uint8_t DDC_READY_FLAG;
 /* USER CODE END 0 */
 
@@ -103,6 +107,8 @@ void HardFault_Handler(void)
   while (1)
   {
     /* USER CODE BEGIN W1_HardFault_IRQn 0 */
+    HAL_GPIO_TogglePin(GPIOB, LED_Pin);
+    HAL_Delay(500);
     /* USER CODE END W1_HardFault_IRQn 0 */
   }
 }
@@ -218,9 +224,22 @@ void SysTick_Handler(void)
 void EXTI0_IRQHandler(void)
 {
   /* USER CODE BEGIN EXTI0_IRQn 0 */
-
+  if ((EXTI->PR & GPIO_PIN_0) != RESET)
+  {
+	__HAL_GPIO_EXTI_CLEAR_IT(GPIO_PIN_0);
+	if (pmod_ok == true)
+		PmodIRQ_Handler();
+	else
+	{
+		pmod_wait_count++;
+		if (pmod_wait_count >= 10)
+		{
+			if (HAL_GPIO_ReadPin(GPIOB, GPIO_PIN_0) == GPIO_PIN_SET)
+				pmod_ok = true;
+		}
+	}
+  }
   /* USER CODE END EXTI0_IRQn 0 */
-  HAL_GPIO_EXTI_IRQHandler(GPIO_PIN_0);
   /* USER CODE BEGIN EXTI0_IRQn 1 */
 
   /* USER CODE END EXTI0_IRQn 1 */
@@ -238,7 +257,7 @@ void EXTI9_5_IRQHandler(void)
 	__HAL_GPIO_EXTI_CLEAR_IT(DDC1_RDY_Pin);
     DDC_READY_FLAG = 1;
   }
-  if ((EXTI->PR & DDC2_RDY_Pin) != RESET)
+  else if ((EXTI->PR & DDC2_RDY_Pin) != RESET)
   {
 	__HAL_GPIO_EXTI_CLEAR_IT(DDC2_RDY_Pin);
     DDC_READY_FLAG = 1;
@@ -256,7 +275,10 @@ void TIM1_CC_IRQHandler(void)
 {
   /* USER CODE BEGIN TIM1_CC_IRQn 0 */
   __HAL_TIM_CLEAR_IT(&htim1, TIM_IT_CC4);
-  buffers[dbuf_index][buffer_index] = (int16_t)GPIOD->IDR;
+  buffers1[dbuf_index][buffer_index] = (int16_t)GPIOD->IDR;
+#if defined(__DDC_TWO__) || defined(__DDC_BOTH__)
+  buffers2[dbuf_index][buffer_index] = (int16_t)GPIOE->IDR;
+#endif
   buffer_index++;
   /* USER CODE END TIM1_CC_IRQn 0 */
   /* USER CODE BEGIN TIM1_CC_IRQn 1 */
@@ -272,7 +294,6 @@ void TIM2_IRQHandler(void)
   /* USER CODE BEGIN TIM2_IRQn 0 */
   /* USR_ADDED */
   __HAL_TIM_CLEAR_IT(&htim2, TIM_IT_UPDATE);
-
   CODER_PORT->ODR = CODE_DATA[code_index];
   code_index++;
   if (code_index == CODE_LEN) HAL_TIM_Base_Stop_IT(&htim2);
@@ -307,11 +328,11 @@ void TIM3_IRQHandler(void)
 void TIM4_IRQHandler(void)
 {
   /* USER CODE BEGIN TIM4_IRQn 0 */
-  __HAL_TIM_CLEAR_IT(&htim4, TIM_IT_CC4);
-  buffers[dbuf_index][buffer_index] = (int16_t)GPIOE->IDR;
+  __HAL_TIM_CLEAR_IT(&htim4, TIM_IT_CC1);
+  buffers2[dbuf_index][buffer_index] = (int16_t)GPIOE->IDR;
   buffer_index++;
   /* USER CODE END TIM4_IRQn 0 */
-  HAL_TIM_IRQHandler(&htim4);
+  // HAL_TIM_IRQHandler(&htim4);
   /* USER CODE BEGIN TIM4_IRQn 1 */
 
   /* USER CODE END TIM4_IRQn 1 */

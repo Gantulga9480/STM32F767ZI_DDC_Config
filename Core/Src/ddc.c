@@ -159,9 +159,9 @@ uint8_t uPort_write(uint8_t address, uint8_t data)
 	GPIOC->ODR |= temp;
 	GPIOG->ODR &= 0xFF00;
 	GPIOG->ODR |= data;
-	// Chip select operation, Active low
-	HAL_GPIO_WritePin(GPIOC, DDC1_CS_Pin, GPIO_PIN_RESET);
-	HAL_GPIO_WritePin(GPIOG, DDC_WR_Pin, GPIO_PIN_RESET);
+#if defined(__DDC_ONE__) || defined(__DDC_BOTH__)
+	HAL_GPIO_WritePin(DDC1_CS_GPIO_Port, DDC1_CS_Pin, GPIO_PIN_RESET);
+	HAL_GPIO_WritePin(DDC_WR_GPIO_Port, DDC_WR_Pin, GPIO_PIN_RESET);
 	while((DDC_READY_FLAG == 0) && (i > 0))
 	{
 		i--;
@@ -170,9 +170,25 @@ uint8_t uPort_write(uint8_t address, uint8_t data)
 		result = 1;
 	else
 		result = 0;
-	// Chip de-select operation.
-	HAL_GPIO_WritePin(GPIOG, DDC_WR_Pin, GPIO_PIN_SET);
-	HAL_GPIO_WritePin(GPIOC, DDC1_CS_Pin, GPIO_PIN_SET);
+	HAL_GPIO_WritePin(DDC_WR_GPIO_Port, DDC_WR_Pin, GPIO_PIN_SET);
+	HAL_GPIO_WritePin(DDC1_CS_GPIO_Port, DDC1_CS_Pin, GPIO_PIN_SET);
+#endif
+#if defined(__DDC_TWO__) || defined(__DDC_BOTH__)
+	DDC_READY_FLAG = 0;
+	i = 500;
+	HAL_GPIO_WritePin(DDC2_CS_GPIO_Port, DDC2_CS_Pin, GPIO_PIN_RESET);
+	HAL_GPIO_WritePin(DDC_WR_GPIO_Port, DDC_WR_Pin, GPIO_PIN_RESET);
+	while((DDC_READY_FLAG == 0) && (i > 0))
+	{
+		i--;
+	}
+	if(i > 0)
+		result = 1;
+	else
+		result = 0;
+	HAL_GPIO_WritePin(DDC_WR_GPIO_Port, DDC_WR_Pin, GPIO_PIN_SET);
+	HAL_GPIO_WritePin(DDC2_CS_GPIO_Port, DDC2_CS_Pin, GPIO_PIN_SET);
+#endif
 	return result;
 }
 uint16_t uPort_read(uint8_t address)
@@ -209,40 +225,55 @@ uint16_t uPort_read(uint8_t address)
 void data_port_mode(uint32_t port_mode)
 {
 	GPIO_InitTypeDef GPIO_InitStruct = {0};
-	if(port_mode == GPIO_MODE_OUTPUT_PP)
-	{
-		GPIO_InitStruct.Pin = DDC_CD0_Pin|DDC_CD1_Pin|DDC_CD2_Pin|DDC_CD3_Pin
-		                          |DDC_CD4_Pin|DDC_CD5_Pin|DDC_CD6_Pin|DDC_CD7_Pin;
-		GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
-		GPIO_InitStruct.Pull = GPIO_NOPULL;
-		GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
-		HAL_GPIO_Init(GPIOG, &GPIO_InitStruct);
-	}
-	else if(port_mode == GPIO_MODE_INPUT)
-	{
-		GPIO_InitStruct.Pin = DDC_CD0_Pin|DDC_CD1_Pin|DDC_CD2_Pin|DDC_CD3_Pin
-				                          |DDC_CD4_Pin|DDC_CD5_Pin|DDC_CD6_Pin|DDC_CD7_Pin;
-		GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
-		GPIO_InitStruct.Pull = GPIO_NOPULL;
-		GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
-		HAL_GPIO_Init(GPIOG, &GPIO_InitStruct);
-	}
+	GPIO_InitStruct.Pin = DDC_CD0_Pin|DDC_CD1_Pin|DDC_CD2_Pin|DDC_CD3_Pin
+				          |DDC_CD4_Pin|DDC_CD5_Pin|DDC_CD6_Pin|DDC_CD7_Pin;
+	GPIO_InitStruct.Mode = port_mode;
+	GPIO_InitStruct.Pull = GPIO_NOPULL;
+	GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
+	HAL_GPIO_Init(GPIOG, &GPIO_InitStruct);
 }
 void ddc_rdy_int_mode(uint32_t mode)
 {
-	GPIO_InitTypeDef GPIO_InitStruct = {0};
-	GPIO_InitStruct.Pin = DDC1_RDY_Pin;
-	GPIO_InitStruct.Mode = mode;
-	GPIO_InitStruct.Pull = GPIO_PULLUP;
-	HAL_GPIO_Init(DDC1_RDY_GPIO_Port, &GPIO_InitStruct);
+#if defined(__DDC_ONE__) || defined(__DDC_BOTH__)
+	GPIO_InitTypeDef ddc1 = {0};
+	ddc1.Pin = DDC1_RDY_Pin;
+	ddc1.Mode = mode;
+	ddc1.Pull = GPIO_PULLUP;
+	HAL_GPIO_Init(DDC1_RDY_GPIO_Port, &ddc1);
+#endif
+
+#if defined(__DDC_TWO__) || defined(__DDC_BOTH__)
+	GPIO_InitTypeDef ddc2 = {0};
+	ddc2.Pin = DDC2_RDY_Pin;
+	ddc2.Mode = mode;
+	ddc2.Pull = GPIO_PULLUP;
+	HAL_GPIO_Init(DDC2_RDY_GPIO_Port, &ddc2);
+#endif
 }
 void hardReset()
 {
+	/* Set WR and RD control pins */
 	HAL_GPIO_WritePin(GPIOG, DDC_WR_Pin|DDC_RD_Pin, GPIO_PIN_SET);
+#if defined(__DDC_ONE__) || defined(__DDC_BOTH__)
 	HAL_GPIO_WritePin(GPIOC, DDC1_CS_Pin|DDC1_RST_Pin, GPIO_PIN_SET);
-	HAL_GPIO_WritePin(GPIOC, DDC1_RST_Pin, GPIO_PIN_RESET);
+#endif
+#if defined(__DDC_TWO__) || defined(__DDC_BOTH__)
+	HAL_GPIO_WritePin(DDC2_CS_GPIO_Port, DDC2_CS_Pin, GPIO_PIN_SET);
+	HAL_GPIO_WritePin(DDC2_RST_GPIO_Port, DDC2_RST_Pin, GPIO_PIN_SET);
+#endif
+#if defined(__DDC_ONE__) || defined(__DDC_BOTH__)
+	HAL_GPIO_WritePin(DDC1_RST_GPIO_Port, DDC1_RST_Pin, GPIO_PIN_RESET);
+#endif
+#if defined(__DDC_TWO__) || defined(__DDC_BOTH__)
+	HAL_GPIO_WritePin(DDC2_RST_GPIO_Port, DDC2_RST_Pin, GPIO_PIN_RESET);
+#endif
 	HAL_Delay(1);
-	HAL_GPIO_WritePin(GPIOC, DDC1_RST_Pin, GPIO_PIN_SET);
+#if defined(__DDC_ONE__) || defined(__DDC_BOTH__)
+	HAL_GPIO_WritePin(DDC1_RST_GPIO_Port, DDC1_RST_Pin, GPIO_PIN_SET);
+#endif
+#if defined(__DDC_TWO__) || defined(__DDC_BOTH__)
+	HAL_GPIO_WritePin(DDC2_RST_GPIO_Port, DDC2_RST_Pin, GPIO_PIN_SET);
+#endif
 }
 uint16_t get_addr(uint8_t *s, int16_t start)
 {

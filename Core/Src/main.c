@@ -91,12 +91,12 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
 {
 	if (rx_buffer[0] == 0x83)
 	{
-		DDC_Buffer1[2] = (rx_buffer[1] << 8) + rx_buffer[0];
-		DDC_Buffer2[2] = (rx_buffer[1] << 8) + rx_buffer[0];
-		DDC_Buffer1[3] = (rx_buffer[3] << 8) + rx_buffer[2];
-		DDC_Buffer2[3] = (rx_buffer[3] << 8) + rx_buffer[2];
-		DDC_Buffer1[4] = rx_buffer[4];
-		DDC_Buffer2[4] = rx_buffer[4];
+		DDC1_Buffer1[2] = (rx_buffer[1] << 8) + rx_buffer[0];
+		DDC1_Buffer2[2] = (rx_buffer[1] << 8) + rx_buffer[0];
+		DDC1_Buffer1[3] = (rx_buffer[3] << 8) + rx_buffer[2];
+		DDC1_Buffer2[3] = (rx_buffer[3] << 8) + rx_buffer[2];
+		DDC1_Buffer1[4] = rx_buffer[4];
+		DDC1_Buffer2[4] = rx_buffer[4];
 	}
 	else
 	{
@@ -187,7 +187,7 @@ int main(void)
    * SW_INT for internal OSC
    * SW_EXT for external OSC
    * */
-  SW_Set(SW_EXT);
+  SW_Set(SW_INT);
 
   USR_DDC_Init();
   /* ---------------------------------------------------- DDC END */
@@ -204,7 +204,7 @@ int main(void)
   HAL_GPIO_WritePin(GPIOB, LED_Pin, GPIO_PIN_SET);
   HAL_UART_Receive_DMA(&huart1, (uint8_t*)rx_buffer, 5);
 
-  HAL_NVIC_EnableIRQ(EXTI0_IRQn);  // Pmod enable
+  HAL_NVIC_EnableIRQ(EXTI0_IRQn);  // Enable Pmod interrupt
   /* ---------------------------------------------------- SETUP END */
 
   /* USER CODE END 2 */
@@ -856,12 +856,23 @@ static void MX_GPIO_Init(void)
 /* @brief DDC Initialization Function */
 void USR_DDC_Init()
 {
-	DDC_ConfigTypeDef ddc_main_conf;
+	HAL_GPIO_WritePin(DDC_WR_GPIO_Port, DDC_WR_Pin, GPIO_PIN_SET);
+	HAL_GPIO_WritePin(DDC_RD_GPIO_Port, DDC_RD_Pin, GPIO_PIN_SET);
+	HAL_GPIO_WritePin(DDC1_CS_GPIO_Port, DDC1_CS_Pin, GPIO_PIN_SET);
+	HAL_GPIO_WritePin(DDC2_CS_GPIO_Port, DDC2_CS_Pin, GPIO_PIN_SET);
 
-	/* ADC, DDC Clock enable 30MHz */
+	/* ADC1, DDC1 Clock enable 30MHz */
 	HAL_TIM_Base_Start(&htim8);
 	HAL_TIM_OC_Start(&htim8, TIM_CHANNEL_2);
 	HAL_TIM_OC_Start(&htim8, TIM_CHANNEL_1);
+
+	/* ADC2, DDC2 Clock enable 30MHz */
+	HAL_TIM_Base_Start(&htim10);
+	HAL_TIM_OC_Start(&htim10, TIM_CHANNEL_1);
+	HAL_TIM_Base_Start(&htim11);
+	HAL_TIM_OC_Start(&htim11, TIM_CHANNEL_1);
+
+	DDC_ConfigTypeDef ddc_main_conf;
 
 	ddc_main_conf.DDC_Mode 			= MASTER_SINGLE_REAL;
 	ddc_main_conf.NCO_Mode 			= NCO_ACTIVE;
@@ -906,44 +917,66 @@ void USR_UDP_ReceiveCallback(struct pbuf *p, const uint32_t addr, const uint16_t
 	}
 }
 
-void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
+/* @brief Pmod sync operation */
+void PmodIRQ_Handler()
 {
-	/* Pmod sync operation */
-	if (GPIO_Pin == GPIO_PIN_0)
+	/* Pmod stop signal */
+	if (HAL_GPIO_ReadPin(GPIOB, GPIO_PIN_0) != pmod_state)
 	{
-		/* Pmod stop signal */
-		if (HAL_GPIO_ReadPin(GPIOB, GPIO_PIN_0) != pmod_state)
+		/* Stop DDC to STM32 Input Capture transfer in Interrupt mode */
+#if defined(__DDC_ONE__) || defined(__DDC_BOTH__)
+		HAL_TIM_IC_Stop_IT(&htim1, TIM_CHANNEL_4);
+#endif
+#ifdef __DDC_TWO__
+		HAL_TIM_IC_Stop_IT(&htim4, TIM_CHANNEL_1);
+#endif
+		/* Send buffered DDC data to PC */
+		prev_index = dbuf_index;
+		dbuf_index++; if (dbuf_index == BUFFER_COUNT) dbuf_index = 0;
+		tmp_buffer_index = buffer_index; buffer_index = HEADER_SIZE;
+		if (tmp_buffer_index > (BUFFER_SIZE/2 + HEADER_SIZE))
 		{
-			/* Stop DDC to STM32 Input Capture transfer in Interrupt mode */
-			HAL_TIM_IC_Stop_IT(&htim1, TIM_CHANNEL_4);
-
-			/* Send buffered DDC data to PC */
-			prev_index = dbuf_index;
-			dbuf_index++; if (dbuf_index == BUFFER_COUNT) dbuf_index = 0;
-			tmp_buffer_index = buffer_index; buffer_index = HEADER_SIZE + 3;
-			if (tmp_buffer_index > (BUFFER_SIZE/2 + HEADER_SIZE))
-			{
-				USR_UDP_Send(UDP_SEND_PORT, (uint8_t *)buffers[prev_index], PACKET_SIZE);
-				if (tmp_buffer_index <= (BUFFER_SIZE+1))
-				{
-					buffers[prev_index][tmp_buffer_index] = FOOTER;
-					buffers[prev_index][tmp_buffer_index+1] = FOOTER;
-				}
-				USR_UDP_Send(UDP_SEND_PORT,
-							 (uint8_t *)(buffers[prev_index] + BUFFER_SIZE/2 + HEADER_SIZE),
-							 (tmp_buffer_index - BUFFER_SIZE/2) * 2);
-			}
-			else
-			{
-				USR_UDP_Send(UDP_SEND_PORT, (uint8_t *)buffers[prev_index], (tmp_buffer_index)*2);
-			}
+#if defined(__DDC_ONE__) || defined(__DDC_BOTH__)
+			USR_UDP_Send(UDP_SEND_PORT, (uint8_t *)buffers1[prev_index], PACKET_SIZE);
+#endif
+#if defined(__DDC_TWO__) || defined(__DDC_BOTH__)
+			USR_UDP_Send(UDP_SEND_PORT, (uint8_t *)buffers2[prev_index], PACKET_SIZE);
+#endif
+			buffers1[prev_index][tmp_buffer_index] = FOOTER_1;
+			buffers1[prev_index][tmp_buffer_index+1] = FOOTER_1;
+			buffers2[prev_index][tmp_buffer_index] = FOOTER_2;
+			buffers2[prev_index][tmp_buffer_index+1] = FOOTER_2;
+#if defined(__DDC_ONE__) || defined(__DDC_BOTH__)
+			USR_UDP_Send(UDP_SEND_PORT,
+						 (uint8_t *)(buffers1[prev_index] + BUFFER_SIZE/2 + HEADER_SIZE),
+						 (tmp_buffer_index - BUFFER_SIZE/2 - HEADER_SIZE + FOOTER_SIZE) * 2);
+#endif
+#if defined(__DDC_TWO__) || defined(__DDC_BOTH__)
+			USR_UDP_Send(UDP_SEND_PORT,
+						 (uint8_t *)(buffers2[prev_index] + BUFFER_SIZE/2 + HEADER_SIZE),
+						 (tmp_buffer_index - BUFFER_SIZE/2 - HEADER_SIZE + FOOTER_SIZE) * 2);
+#endif
 		}
-		/* Pmod start signal */
 		else
 		{
-			/* Start DDC to STM32 Input Capture transfer in Interrupt mode */
-			HAL_TIM_IC_Start_IT(&htim1, TIM_CHANNEL_4);
+#if defined(__DDC_ONE__) || defined(__DDC_BOTH__)
+			USR_UDP_Send(UDP_SEND_PORT, (uint8_t *)buffers1[prev_index], (tmp_buffer_index)*2);
+#endif
+#if defined(__DDC_TWO__) || defined(__DDC_BOTH__)
+			USR_UDP_Send(UDP_SEND_PORT, (uint8_t *)buffers2[prev_index], (tmp_buffer_index)*2);
+#endif
 		}
+	}
+	/* Pmod start signal */
+	else
+	{
+		/* Start DDC to STM32 Input Capture transfer in Interrupt mode */
+#if defined(__DDC_ONE__) || defined(__DDC_BOTH__)
+		HAL_TIM_IC_Start_IT(&htim1, TIM_CHANNEL_4);
+#endif
+#ifdef __DDC_TWO__
+		HAL_TIM_IC_Start_IT(&htim4, TIM_CHANNEL_1);
+#endif
 	}
 }
 
@@ -954,13 +987,16 @@ void UDP_Buffer_Init()
 	for (; i < BUFFER_COUNT; i++)
 	{
 		/* HEADER */
-		for (j = 0; j < HEADER_SIZE; j++) { buffers[i][j] = HEADER; }
+		/* Serial data added to header section */
+		for (j = 0; j < HEADER_SIZE-3; j++) { buffers1[i][j] = HEADER_1; }
+		for (j = 0; j < HEADER_SIZE-3; j++) { buffers2[i][j] = HEADER_2; }
 
 		/* Insert buffer index in header */
 		// buffers[i][0] = (i + 49);
 
 		/* FOOTER */
-		for (j = 0; j < FOOTER_SIZE; j++) { buffers[i][HEADER_SIZE + BUFFER_SIZE + j] = FOOTER; }
+//		for (j = 0; j < FOOTER_SIZE; j++) { buffers1[i][HEADER_SIZE + BUFFER_SIZE + j] = FOOTER_1; }
+//		for (j = 0; j < FOOTER_SIZE; j++) { buffers2[i][HEADER_SIZE + BUFFER_SIZE + j] = FOOTER_2; }
 	}
 }
 
@@ -1014,14 +1050,18 @@ void SW_Set(uint8_t mode)
 	/* Internal OSC */
 	if (mode == SW_INT)
 	{
+		/* Enable internal OSC */
 		HAL_GPIO_WritePin(GPIOA, OSC_EN_Pin, GPIO_PIN_SET);
+		/* Switch to internal OSC signal pin */
 		HAL_GPIO_WritePin(GPIOB, SW_A_Pin, GPIO_PIN_SET);
 		HAL_GPIO_WritePin(GPIOB, SW_B_Pin, GPIO_PIN_RESET);
 	}
 	/* External OSC */
 	else if (mode == SW_EXT)
 	{
+		/* Disable internal OSC */
 		HAL_GPIO_WritePin(GPIOA, OSC_EN_Pin, GPIO_PIN_RESET);
+		/* Switch to external signal pin */
 		HAL_GPIO_WritePin(GPIOB, SW_A_Pin, GPIO_PIN_RESET);
 		HAL_GPIO_WritePin(GPIOB, SW_B_Pin, GPIO_PIN_SET);
 	}
