@@ -205,6 +205,11 @@ int main(void)
   while (1)
   {
 	MX_LWIP_Process();
+	if (buffer_index >= 700)
+	{
+		/* Stop DDC to STM32 Input Capture transfer in Interrupt mode */
+		HAL_TIM_IC_Stop_IT(&htim1, TIM_CHANNEL_4);
+	}
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
